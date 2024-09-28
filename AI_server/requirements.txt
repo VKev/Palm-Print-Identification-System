@@ -1,0 +1,7 @@
+torch>=2.4.0
+causal-conv1d
+mamba-ssm
+timm
+tensorboardX
+einops
+transformers

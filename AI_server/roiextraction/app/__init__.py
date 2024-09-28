@@ -1,0 +1,1 @@
+from .PalmprintRecognitionNetwork import *
