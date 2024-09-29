@@ -43,7 +43,7 @@ def enhance_images(input_path, regex_pattern):
                         img = Image.open(f)
                         gray_img = img.convert("L")  # Convert to grayscale
                         enhancer = ImageEnhance.Contrast(gray_img)
-                        enhanced_img = enhancer.enhance(2.5)
+                        enhanced_img = enhancer.enhance(1.5)
                         enhanced_img.save(
                             source_file
                         )  # Save it back with the same name
@@ -56,10 +56,8 @@ def enhance_images(input_path, regex_pattern):
 
 # Example usage
 if __name__ == "__main__":
-    input_path = (
-        r"C:\My_Laptop\Repo\Palm-Vein-Recognition-System\AI_Server\data\grayscale\001"
-    )
+    input_path = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\004"
     # regex_pattern = r"^\d{3}P_(PR|PL)\d{2}\.bmp$"  # Adjust the regex as needed
-    regex_pattern = r".+\.(jpg|jpeg|png|bmp|gif)$"  # Adjust the regex as needed
+    regex_pattern = r".+\.(jpg|jpeg|png|bmp|gif|JPG)$"  # Adjust the regex as needed
 
     enhance_images(input_path, regex_pattern)

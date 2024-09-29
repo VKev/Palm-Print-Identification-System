@@ -62,12 +62,45 @@ def move_images(input_path, output_path, regex_pattern):
                 print(f"Moved directory: {source_dir} to {output_path}")
 
 
+def move_images_to_root(path):
+    # Define the allowed image file extensions
+    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
+
+    # Walk through all subdirectories and files
+    for root, _, files in os.walk(path):
+        for file in files:
+            # Check if the file has a valid image extension
+            if os.path.splitext(file)[1].lower() in image_extensions:
+                source = os.path.join(root, file)
+                destination = os.path.join(path, file)
+
+                # If a file with the same name exists in the destination, rename it
+                if os.path.exists(destination):
+                    base_name, extension = os.path.splitext(file)
+                    counter = 1
+                    new_file_name = f"{base_name}_{counter}{extension}"
+                    destination = os.path.join(path, new_file_name)
+
+                    # Keep incrementing the counter until a unique file name is found
+                    while os.path.exists(destination):
+                        counter += 1
+                        new_file_name = f"{base_name}_{counter}{extension}"
+                        destination = os.path.join(path, new_file_name)
+
+                # Move the image to the root path
+                shutil.move(source, destination)
+                print(f"Moved: {source} -> {destination}")
+
+
 # Example usage
 if __name__ == "__main__":
-    input_path = r"C:\My_Laptop\Repo\Palm-Vein-Recognition-System\AI_Server\data\raw\ROI\session2"
-    output_path = (
-        r"C:\My_Laptop\Repo\Palm-Vein-Recognition-System\AI_Server\data\grayscale\003"
+    move_images(
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\roiextraction\data\raw\005",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\roiextraction\data\raw\new",
+        r".*R.*",
     )
-    regex_pattern = r"^\d{5}\.bmp$"  # Adjust the regex as needed
-
-    move_and_rename_images(input_path, output_path, regex_pattern, "s2")
+    # move_images(
+    #     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\001",
+    #     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\004",
+    #     r".*s3.*",
+    # )

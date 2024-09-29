@@ -28,7 +28,7 @@ def process_images_in_folder(input_folder, output_folder):
     @output_folder: Folder where processed images will be saved
     """
     # Regex pattern to match filenames starting with a number followed by 'O'
-    pattern = re.compile(r"^\d+O")
+    pattern = re.compile(r".*")
 
     # Mean and standard deviation used during normalization
     mean = [0.485, 0.456, 0.406]
@@ -39,7 +39,7 @@ def process_images_in_folder(input_folder, output_folder):
         for file in files:
             # Check if filename matches the 'numberO' pattern
             if pattern.match(file) and file.endswith(
-                (".png", ".jpg", ".jpeg", ".bmp")
+                (".png", ".jpg", ".jpeg", ".bmp", ".JPG")
             ):  # Adjust extensions as needed
                 img_path = os.path.join(root, file)
 
@@ -49,7 +49,7 @@ def process_images_in_folder(input_folder, output_folder):
                 os.makedirs(save_folder, exist_ok=True)
 
                 # Predict and preprocess the image
-                preprocessed_img = roi_data_agumentation(img_path).squeeze(
+                preprocessed_img = predictAndPreprocess(img_path).squeeze(
                     0
                 )  # Remove batch dimension
 
@@ -65,10 +65,10 @@ def process_images_in_folder(input_folder, output_folder):
 
 
 if __name__ == "__main__":
-    pass
-    # preprocessed_img = roi_data_agumentation(
-    #     r"C:\My_Laptop\Repo\Palm-Vein-Recognition-System\AI_Server\data\raw\multimodal pp and pv\DB_Vein\004\archive\0005_O_VR04_sekhor.bmp"
-    # )
+    preprocessed_img = process_images_in_folder(
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\roiextraction\data\raw\005",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\roiextraction\data\raw\005",
+    )
     # visualize_roi_data_agumentation(preprocessed_img)
 
     # img_to_display = preprocessed_img.squeeze().cpu()

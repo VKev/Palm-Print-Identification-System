@@ -32,10 +32,12 @@ def run_inference(image_paths):
 
 # Example usage
 image_paths = [
-    r"raw/test/Cat1.jpg",
-    r"raw/test/Cat2.jpg",
-    r"raw/test/Dog1.jpg",
-    r"raw/test/Dog2.jpg",
+    r"raw/test/00008_s2_0.bmp",
+    r"raw/test/00009_s2_0.bmp",
+    r"raw/test/00010_s2_0.bmp",
+    r"raw/test/00011_s2_1.bmp",
+    r"raw/test/00012_s2_1.bmp",
+    r"raw/test/00013_s2_1.bmp",
 ]
 outputs = run_inference(image_paths)
 

@@ -444,7 +444,6 @@ def predictAndShow(path: str):
         [
             transforms.Grayscale(),
             transforms.CenterCrop((224, 224)),
-            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Lambda(lambda x: x.repeat(3, 1, 1)),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -479,6 +478,7 @@ def predictAndShow(path: str):
     img = CNNtransformer(b)
     plt.subplot(2, 2, 4)
     plt.imshow((img.cpu()[0]), cmap="gray")
+    plt.imsave(path, img.cpu()[0], cmap='gray')
     plt.title("Preprocessed for CNN classification")
     img = img.view(1, img.size(0), img.size(1), img.size(2))
     img = img.to(device)
