@@ -301,7 +301,6 @@ print(f"Before fine tune, Test Loss: {test_loss}")
 # Training loop with triplet loss and validation
 def train(model, train_loader, val_loader, criterion, optimizer, epochs=10):
     model.train()  # Set model to training mode
-    log_file_path = "checkpoints/training_log.txt"  # Path for log file
 
     for epoch in range(epochs):
         running_loss = 0.0
@@ -349,12 +348,14 @@ def train(model, train_loader, val_loader, criterion, optimizer, epochs=10):
         print(f"Epoch [{epoch+1}/{epochs}], Test Loss: {test_loss}")
 
         # Log the epoch, training loss, and validation loss to a file
-        with open(log_file_path, "a") as log_file:
+        with open("checkpoints/training_log.txt", "a") as log_file:
             log_file.write(
                 f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}\n"
             )
 
-        torch.save(model.state_dict(), "checkpoints/fine_tuned_mamba_vision_L2.pth")
+        torch.save(
+            model.state_dict(), f"checkpoints/fine_tuned_mamba_vision_L2_e{epoch+1}.pth"
+        )
 
 
 # Run the training process with progress bars and validation
