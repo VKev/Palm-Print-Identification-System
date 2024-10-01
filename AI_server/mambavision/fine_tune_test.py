@@ -8,17 +8,18 @@ from torch.nn.functional import normalize
 import random
 import os
 from tqdm import tqdm
+import re
 
 # Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 220
+batch_size = 1
 epoch = 30
 lr = 1e-5
 test = True
 
 if test:
     batch_size = 10
-    train_size = 1000
+    train_size = 100
 
 
 class CombinedTripletDataset(Dataset):
@@ -126,12 +127,10 @@ transform = transforms.Compose(
 def load_images_from_folders(base_folder):
     image_paths = []
     labels = []
-    global_label_counter = 0  # Initialize the global label counter
-    image_counter = 0  # Counter to keep track of how many images we've processed
 
     for root, _, files in os.walk(base_folder):
         files = [
-            file for file in files if file.lower().endswith(".bmp")
+            file for file in files if file.lower().endswith((".bmp", ".jpg", ".jpeg"))
         ]  # Filter only .bmp files
 
         # Sort files to maintain consistent ordering if needed
@@ -141,15 +140,13 @@ def load_images_from_folders(base_folder):
             img_path = os.path.join(root, file)
             image_paths.append(img_path)
 
-            # Assign a unique label that increases after every 10 images
-            label = global_label_counter
-            labels.append(label)
-
-            image_counter += 1
-
-            # Increment global label counter every 10 images
-            if image_counter % 10 == 0:
-                global_label_counter += 1
+            # Extract the last number from the filename
+            label_match = re.search(r"_(\d+)\.(bmp|jpg|jpeg)$", file, re.IGNORECASE)
+            if label_match:
+                label = int(
+                    label_match.group(1)
+                )  # Convert the matched number to an integer
+                labels.append(label)
 
     return image_paths, labels
 
@@ -166,11 +163,11 @@ triplet_default_dataset = TripletDataset(image_paths, labels, transform=transfor
 triplet_argumentation_dataset = TripletDataset(
     image_paths, labels, augmentation=augmentation, transform=transform
 )
+
 # Split the dataset into training and validation sets (e.g., 80% training, 20% validation)
 combined_dataset = CombinedTripletDataset(
     triplet_default_dataset, triplet_argumentation_dataset
 )
-
 train_size = int(0.9 * len(combined_dataset))
 val_size = len(combined_dataset) - train_size
 train_dataset, val_dataset = random_split(combined_dataset, [train_size, val_size])
@@ -181,7 +178,6 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 # Load the pre-trained model
 model = mamba_vision_L2(pretrained=True).to(device)
-
 # Freeze all layers except the last few
 for param in model.parameters():
     param.requires_grad = False
@@ -296,6 +292,10 @@ def test(model, loader, criterion):
             test_loss += loss.item()
 
     return test_loss / len(loader)
+
+
+test_loss = test(model, test_loader, triplet_loss)
+print(f"Before fine tune, Test Loss: {test_loss}")
 
 
 # Training loop with triplet loss and validation
