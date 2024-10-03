@@ -66,8 +66,8 @@ def process_images_in_folder(input_folder, output_folder):
 
 if __name__ == "__main__":
     preprocessed_img = process_images_in_folder(
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\depthanythingv2\test",
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\depthanythingv2\test",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Birjand University Mobile Palmprint Database (BMPD)",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Birjand University Mobile Palmprint Database (BMPD)",
     )
     # visualize_roi_data_agumentation(preprocessed_img)
 

@@ -1,6 +1,5 @@
-#!/bin/bash
 
-MODEL=mamba_vision_T
+MODEL=mamba_vision_L2
 DATA_PATH_TRAIN="/my_dataset/train"
 DATA_PATH_VAL="/my_dataset/val"
 BS=256

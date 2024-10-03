@@ -95,9 +95,9 @@ def move_images_to_root(path):
 # Example usage
 if __name__ == "__main__":
     move_images(
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\roiextraction\data\raw\005",
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\roiextraction\data\raw\new",
-        r".*R.*",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\tett\015",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\tett",
+        r".*",
     )
     # move_images(
     #     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\001",

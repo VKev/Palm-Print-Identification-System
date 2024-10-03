@@ -76,8 +76,8 @@ def process_and_blackout_image(image_path):
     depth = (depth - depth.min()) / (depth.max() - depth.min())  # Normalize depth
 
     # Step 3: Create mask based on depth threshold
-    mask = depth < 0.475
-    # 0.475
+    mask = depth < 0.33
+    # 0.475 
 
     # Step 4: Black out pixels where the mask is True
     blacked_out_img = raw_img.copy()
@@ -99,7 +99,5 @@ def process_images_in_directory(root_directory):
 
 
 # Example usage:
-root_directory = (
-    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\depthanythingv2\test"
-)
+root_directory = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Birjand University Mobile Palmprint Database (BMPD)"
 process_images_in_directory(root_directory)
