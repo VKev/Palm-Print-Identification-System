@@ -1,6 +1,7 @@
 import torch
 from PIL import Image
 from torchvision import transforms
+from tqdm import tqdm
 from models import mamba_vision_L2
 from scipy.spatial.distance import cosine
 
@@ -8,7 +9,7 @@ from scipy.spatial.distance import cosine
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = mamba_vision_L2()  # Initialize the model without pretrained weights
 model.load_state_dict(
-    torch.load(r"checkpoints/fine_tuned_mamba_vision_L2_f2_2.pth")
+    torch.load(r"checkpoints/batch4/fine_tuned_mamba_vision_L2_e11.pth")
 )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
@@ -35,12 +36,26 @@ def preprocess_images(image_paths):
     return torch.stack(images).to(device)
 
 
-# Run inference
-def run_inference(image_paths):
-    input_tensor = preprocess_images(image_paths)  # Preprocess all images
-    with torch.no_grad():  # Disable gradient computation
-        outputs = model.forward_features(input_tensor)  # Forward pass
-    return outputs
+def run_inference(image_paths, batch_size=32):
+    all_outputs = []
+
+    total_batches = (len(image_paths) + batch_size - 1) // batch_size
+    progress_bar = tqdm(total=total_batches, desc="Processing Batches", unit="batch")
+
+    for i in range(0, len(image_paths), batch_size):
+        batch_paths = image_paths[i : i + batch_size]
+        input_tensor = preprocess_images(batch_paths)
+
+        with torch.no_grad():
+            batch_outputs = model.forward_features(input_tensor)
+
+        all_outputs.append(batch_outputs)
+
+        progress_bar.update(1)
+
+    progress_bar.close()
+
+    return torch.cat(all_outputs, dim=0)
 
 
 import os
@@ -69,13 +84,13 @@ def l2_normalize(embeddings):
 
 
 # Example usage
-image_paths = get_image_paths("test/")
+image_paths = get_image_paths("raw/test")
 
 # Run inference and compute similarity scores
 outputs = run_inference(image_paths)
 outputs = l2_normalize(outputs)
 
-strange_paths = get_image_paths("raw/strangeDatabase")
+strange_paths = get_image_paths("raw/strange")
 
 strange_outputs = run_inference(strange_paths)
 strange_outputs = l2_normalize(strange_outputs)

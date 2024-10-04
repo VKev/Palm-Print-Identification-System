@@ -42,18 +42,20 @@ def get_data():
 
     if document:
         image_data = document["hand_images"]
-        images = []
+        # images = []
         for idx, image in enumerate(image_data):
             image_stream = io.BytesIO(image)
             img = Image.open(image_stream)
-            img = background_cut(img)
-            img = roicut(img)
-            images.append(img)
+            # img = background_cut(img)
+            # img = roicut(img)
+            save_path = f"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\\raw\\realtest\\"  # Adjust path and file naming as needed
+            img.save(save_path)
+            # images.append(img)
 
-        preprocessed_image = preprocess_images(images)
+        # preprocessed_image = preprocess_images(images)
 
-        embeddings = get_embbedding(model, preprocessed_image).cpu().numpy()
-        print(embeddings)
+        # embeddings = get_embbedding(model, preprocessed_image).cpu().numpy()
+        # print(embeddings)
         # students = db["students"]
         # for idx, embedding in enumerate(embeddings):
         #     document = {

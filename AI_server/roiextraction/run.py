@@ -2,8 +2,7 @@ import tkinter.filedialog
 from app import predictAndShow
 from tkinter import *
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
-                                               NavigationToolbar2Tk)
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 canvas = None
 
@@ -12,10 +11,12 @@ def plot():
     global canvas
     if canvas is not None:
         canvas.get_tk_widget().destroy()
-    path = tkinter.filedialog.askopenfilename(filetypes=[("Image File", '.tiff .jpg .png')])
+    path = tkinter.filedialog.askopenfilename(
+        filetypes=[("Image File", ".tiff .jpg .png")]
+    )
     if path is None:
         return
-    trueLabel = path.split('/')[-2]
+    trueLabel = path.split("/")[-2]
     fig = predictAndShow(path)
     # creating the Tkinter canvas
     # containing the Matplotlib figure
@@ -27,22 +28,19 @@ def plot():
     canvas.draw()
 
 
-
 # the main Tkinter window
 window = Tk()
 
 # setting the title
-window.title('Palmprint Recognition')
+window.title("Palmprint Recognition")
 
 # dimensions of the main window
 window.geometry("1000x800")
 
 # button that displays the plot
-plot_button = Button(master=window,
-                     command=plot,
-                     height=1,
-                     width=15,
-                     text="Open Image File")
+plot_button = Button(
+    master=window, command=plot, height=1, width=15, text="Open Image File"
+)
 
 # place the button
 # in main window

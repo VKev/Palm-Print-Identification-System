@@ -56,8 +56,8 @@ def enhance_images(input_path, regex_pattern):
 
 # Example usage
 if __name__ == "__main__":
-    input_path = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Palmprint Image Dataset with Gabor Filter Feature Enchancement\raw"
+    input_path = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\test"
     # regex_pattern = r"^\d{3}P_(PR|PL)\d{2}\.bmp$"  # Adjust the regex as needed
     regex_pattern = r".+\.(jpg|jpeg|png|bmp|gif|JPG)$"  # Adjust the regex as needed
 
-    convert_images_to_grayscale(input_path, regex_pattern)
+    enhance_images(input_path, regex_pattern)
