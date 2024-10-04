@@ -19,7 +19,7 @@ test = True
 
 if test:
     batch_size = 10
-    train_size = 40
+    train_size = 1000
 
 
 class CombinedTripletDataset(Dataset):
@@ -67,19 +67,26 @@ class TripletDataset(Dataset):
                     )  # Sort to ensure uniqueness
                     if pair not in processed_pairs:
                         processed_pairs.add(pair)
-                        # For each different label, select one negative image
-                        for neg_label in self.label_to_indices:
-                            if neg_label != anchor_label:
-                                negative_idx = random.choice(
-                                    self.label_to_indices[neg_label]
-                                )
-                                triplets.append(
-                                    (anchor_idx, positive_idx, negative_idx)
-                                )
-                                # Also add the reverse pair to maintain balance
-                                triplets.append(
-                                    (positive_idx, anchor_idx, negative_idx)
-                                )
+
+                        # Get all possible negative labels (excluding anchor label)
+                        negative_labels = [
+                            label
+                            for label in self.label_to_indices
+                            if label != anchor_label
+                        ]
+
+                        # Randomly select 3 different negative labels
+                        selected_neg_labels = random.sample(
+                            negative_labels, min(3, len(negative_labels))
+                        )
+
+                        # For each selected negative label, choose one negative sample
+                        for neg_label in selected_neg_labels:
+                            negative_idx = random.choice(
+                                self.label_to_indices[neg_label]
+                            )
+                            triplets.append((anchor_idx, positive_idx, negative_idx))
+
         return triplets
 
     def __len__(self):
