@@ -12,6 +12,20 @@ from tqdm import tqdm
 import re
 
 
+# Set device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+batch_size = 1
+epoch = 30
+lr = 1e-5
+test = True
+n_negatives = 16
+
+if test:
+    n_negatives = 5
+    batch_size = 5
+    train_size = 40
+
+
 class SemiHardTripletLoss(nn.Module):
     def __init__(self, margin=1.0):
         super(SemiHardTripletLoss, self).__init__()
@@ -72,20 +86,6 @@ class SemiHardTripletLoss(nn.Module):
 
         # Return mean of valid triplet losses
         return valid_triplet_loss.mean()
-
-
-# Set device
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 1
-epoch = 30
-lr = 1e-5
-test = True
-n_negatives = 16
-
-if test:
-    n_negatives = 3
-    batch_size = 5
-    train_size = 100
 
 
 class CombinedTripletDataset(Dataset):
@@ -384,12 +384,6 @@ def test(model, test_loader, criterion, device):
     return running_loss / total_batches
 
 
-criterion = SemiHardTripletLoss(margin=1.0).to(device)
-test_loss = test(model, test_loader, criterion, device)
-print(f"Before fine tune, Test Loss: {test_loss}")
-min_test_loss = test_loss
-
-
 # Training loop with triplet loss and validation
 def train(
     model, train_loader, val_loader, test_loader, optimizer, epochs=10, device="cuda"
@@ -397,6 +391,9 @@ def train(
     # Initialize the semi-hard triplet loss
     criterion = SemiHardTripletLoss(margin=1.0).to(device)
     model.train()
+    test_loss = test(model, test_loader, criterion, device)
+    print(f"Before fine tune, Test Loss: {test_loss}")
+    min_test_loss = test_loss
 
     for epoch in range(epochs):
         running_loss = 0.0
