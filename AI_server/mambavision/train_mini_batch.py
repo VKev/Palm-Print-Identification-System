@@ -18,7 +18,7 @@ lr = 1e-5
 test = True
 
 if test:
-    batch_size = 10
+    batch_size = 5
     train_size = 100
 
 
@@ -41,9 +41,14 @@ class CombinedTripletDataset(Dataset):
 
 # Define the dataset for triplet loss
 class TripletDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None, augmentation=None):
+    def __init__(
+        self, image_paths, labels, n_negatives=5, transform=None, augmentation=None
+    ):
         self.image_paths = image_paths
         self.labels = labels
+        self.n_negatives = (
+            n_negatives  # Number of negative samples per anchor-positive pair
+        )
         self.transform = transform
         self.augmentation = augmentation
 
@@ -64,16 +69,26 @@ class TripletDataset(Dataset):
         positive_idx = random.choice(positive_indices)
         positive_image = Image.open(self.image_paths[positive_idx]).convert("RGB")
 
-        # Negative image (different label)
+        # Get multiple negative images (different labels)
         negative_indices = [
             i for i, label in enumerate(self.labels) if label != anchor_label
         ]
-        negative_idx = random.choice(negative_indices)
-        negative_image = Image.open(self.image_paths[negative_idx]).convert("RGB")
+        negative_images = []
+        selected_negative_indices = random.sample(negative_indices, self.n_negatives)
 
-        # Apply augmentations (rotation, color jitter, etc.)
+        for neg_idx in selected_negative_indices:
+            negative_image = Image.open(self.image_paths[neg_idx]).convert("RGB")
+
+            # Apply augmentations or transformations
+            if self.augmentation and random.random() < 0.5:
+                negative_image = self.augmentation(negative_image)
+            else:
+                negative_image = self.transform(negative_image)
+
+            negative_images.append(negative_image)
+
+        # Apply augmentations to anchor and positive images
         if self.augmentation:
-            # Apply augmentation to anchor, positive, negative images randomly
             if random.random() < 0.5:
                 anchor_image = self.augmentation(anchor_image)
             else:
@@ -83,18 +98,12 @@ class TripletDataset(Dataset):
                 positive_image = self.augmentation(positive_image)
             else:
                 positive_image = self.transform(positive_image)
-
-            if random.random() < 0.5:
-                negative_image = self.augmentation(negative_image)
-            else:
-                negative_image = self.transform(negative_image)
         else:
-            # If no augmentation, apply standard transformation to all images
             anchor_image = self.transform(anchor_image)
             positive_image = self.transform(positive_image)
-            negative_image = self.transform(negative_image)
 
-        return anchor_image, positive_image, negative_image
+        # Return a tuple of (anchor, positive, [negative1, negative2, ..., negativeN])
+        return anchor_image, positive_image, negative_images
 
 
 # Define augmentations
@@ -196,33 +205,41 @@ os.makedirs("checkpoints", exist_ok=True)
 
 
 # Validation function
-def validate(model, loader, criterion):
-    model.eval()  # Set model to evaluation mode
-    val_loss = 0.0
+def validate(model, val_loader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    total_batches = 0
 
-    with torch.no_grad():  # Disable gradient calculation
-        for anchor, positive, negative in loader:
-            anchor, positive, negative = (
-                anchor.to(device),
-                positive.to(device),
-                negative.to(device),
-            )
+    with torch.no_grad():
+        for anchor, positive, negatives in val_loader:
+            anchor = anchor.to(device)
+            positive = positive.to(device)
 
-            # Forward pass
+            # Forward pass for anchor and positive
             anchor_features = model.forward_features(anchor)
             positive_features = model.forward_features(positive)
-            negative_features = model.forward_features(negative)
 
             # Normalize features
             anchor_features = normalize(anchor_features, p=2, dim=1)
             positive_features = normalize(positive_features, p=2, dim=1)
-            negative_features = normalize(negative_features, p=2, dim=1)
 
-            # Compute validation loss
-            loss = criterion(anchor_features, positive_features, negative_features)
-            val_loss += loss.item()
+            batch_loss = 0.0
+            # Process each negative sample
+            for neg in negatives:
+                neg = neg.to(device)
+                negative_features = model.forward_features(neg)
+                negative_features = normalize(negative_features, p=2, dim=1)
 
-    return val_loss / len(loader)
+                loss = criterion(anchor_features, positive_features, negative_features)
+                batch_loss += loss
+
+            # Average the loss over all negatives
+            batch_loss = batch_loss / len(negatives)
+            running_loss += batch_loss.item()
+            total_batches += 1
+
+    model.train()
+    return running_loss / total_batches
 
 
 def load_test_from_folders(base_folder):
@@ -265,100 +282,141 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
 # Validation and test functions (they can be similar)
-def test(model, loader, criterion):
-    model.eval()  # Set model to evaluation mode
-    test_loss = 0.0
+def test(model, test_loader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    total_batches = 0
 
-    with torch.no_grad():  # Disable gradient calculation
-        for anchor, positive, negative in loader:
-            anchor, positive, negative = (
-                anchor.to(device),
-                positive.to(device),
-                negative.to(device),
-            )
+    with torch.no_grad():
+        for anchor, positive, negatives in test_loader:
+            anchor = anchor.to(device)
+            positive = positive.to(device)
 
-            # Forward pass
             anchor_features = model.forward_features(anchor)
             positive_features = model.forward_features(positive)
-            negative_features = model.forward_features(negative)
 
-            # Normalize features
             anchor_features = normalize(anchor_features, p=2, dim=1)
             positive_features = normalize(positive_features, p=2, dim=1)
-            negative_features = normalize(negative_features, p=2, dim=1)
 
-            # Compute test loss
-            loss = criterion(anchor_features, positive_features, negative_features)
-            test_loss += loss.item()
+            batch_loss = 0.0
+            for neg in negatives:
+                neg = neg.to(device)
+                negative_features = model.forward_features(neg)
+                negative_features = normalize(negative_features, p=2, dim=1)
 
-    return test_loss / len(loader)
+                loss = criterion(anchor_features, positive_features, negative_features)
+                batch_loss += loss
+
+            batch_loss = batch_loss / len(negatives)
+            running_loss += batch_loss.item()
+            total_batches += 1
+
+    model.train()
+    return running_loss / total_batches
 
 
-test_loss = test(model, test_loader, triplet_loss)
+test_loss = test(model, test_loader, triplet_loss, device)
 print(f"Before fine tune, Test Loss: {test_loss}")
 
 
 # Training loop with triplet loss and validation
-def train(model, train_loader, val_loader, criterion, optimizer, epochs=10):
+def train(
+    model,
+    train_loader,
+    val_loader,
+    test_loader,
+    criterion,
+    optimizer,
+    epochs=10,
+    device="cuda",
+):
     model.train()  # Set model to training mode
 
     for epoch in range(epochs):
         running_loss = 0.0
+        total_batches = 0
 
         # Add tqdm progress bar for each epoch
         epoch_iterator = tqdm(
             train_loader, desc=f"Epoch [{epoch+1}/{epochs}]", unit="batch"
         )
 
-        for i, (anchor, positive, negative) in enumerate(epoch_iterator):
-            anchor, positive, negative = (
-                anchor.to(device),
-                positive.to(device),
-                negative.to(device),
-            )
+        for i, (anchor, positive, negatives) in enumerate(epoch_iterator):
+            # Move everything to device
+            anchor = anchor.to(device)
+            positive = positive.to(device)
 
-            # Forward pass: extract features
+            # Handle the list of negative tensors from the dataset
+            # negatives is a list of B tensors, where B is batch size
+            # Each tensor in the list has shape [batch_size, channels, height, width]
+            batch_loss = 0.0
+            n_negatives = len(negatives)
+
+            # Forward pass for anchor and positive (only need to do this once)
             anchor_features = model.forward_features(anchor)
             positive_features = model.forward_features(positive)
-            negative_features = model.forward_features(negative)
 
             # Normalize features
             anchor_features = normalize(anchor_features, p=2, dim=1)
             positive_features = normalize(positive_features, p=2, dim=1)
-            negative_features = normalize(negative_features, p=2, dim=1)
 
-            # Compute loss
-            loss = criterion(anchor_features, positive_features, negative_features)
+            # Process each negative sample
+            for neg in negatives:
+                neg = neg.to(device)
+                negative_features = model.forward_features(neg)
+                negative_features = normalize(negative_features, p=2, dim=1)
+
+                # Compute loss for this negative
+                loss = criterion(anchor_features, positive_features, negative_features)
+                batch_loss += loss
+
+            # Average the loss over all negatives
+            batch_loss = batch_loss / n_negatives
 
             # Backward pass and optimization
             optimizer.zero_grad()
-            loss.backward()
+            batch_loss.backward()
             optimizer.step()
 
-            running_loss += loss.item()
+            running_loss += batch_loss.item()
+            total_batches += 1
 
-        avg_loss = running_loss / len(train_loader)
+            # Update progress bar
+            epoch_iterator.set_postfix({"loss": batch_loss.item()})
+
+        avg_loss = running_loss / total_batches
         print(f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}")
 
         # Validate the model after each epoch
-        val_loss = validate(model, val_loader, criterion)
+        val_loss = validate(model, val_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Validation Loss: {val_loss}")
 
-        test_loss = test(model, test_loader, criterion)
+        test_loss = test(model, test_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Test Loss: {test_loss}")
 
         # Log the epoch, training loss, and validation loss to a file
         with open("checkpoints/training_log.txt", "a") as log_file:
             log_file.write(
-                f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}\n"
+                f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}, "
+                f"Validation Loss: {val_loss}, Test Loss: {test_loss}\n"
             )
 
+        # Save model checkpoint
         torch.save(
             model.state_dict(), f"checkpoints/fine_tuned_mamba_vision_L2_e{epoch+1}.pth"
         )
 
 
 # Run the training process with progress bars and validation
-train(model, train_loader, val_loader, triplet_loss, optimizer, epochs=epoch)
+train(
+    model,
+    train_loader,
+    val_loader,
+    test_loader,
+    triplet_loss,
+    optimizer,
+    epochs=epoch,
+    device=device,
+)
 
 # Save the fine-tuned model

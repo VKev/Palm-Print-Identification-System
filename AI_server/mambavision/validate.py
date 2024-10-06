@@ -1,27 +1,29 @@
 import torch
 from PIL import Image
 from torchvision import transforms
+from tqdm import tqdm
 from models import mamba_vision_L2
 from scipy.spatial.distance import cosine
-from tqdm import tqdm
-from collections import defaultdict
 
-
+# Load the model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = mamba_vision_L2()
+model = mamba_vision_L2()  # Initialize the model without pretrained weights
 model.load_state_dict(
-    torch.load(r"checkpoints/oldcheckpoint/fine_tuned_mamba_vision_L2_f2_2.pth")
-)
+    torch.load(r"checkpoints/fine_tuned_mamba_vision_L2_e15.pth")
+)  # Load the fine-tuned weights
 model.to(device)
-model.eval()
+model.eval()  # Set the model to evaluation mode
 
 
+# Image preprocessing
 def preprocess_images(image_paths):
     preprocess = transforms.Compose(
         [
             transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.ToTensor(),  # Convert to tensor
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+            ),  # Normalize
         ]
     )
 
@@ -73,147 +75,156 @@ def get_image_paths(directory):
     return image_paths
 
 
-# Example usage
-image_paths = get_image_paths("raw/test")
-
-# Run inference and compute similarity scores
-outputs = run_inference(image_paths, 50)
-
-strange_hand_paths = get_image_paths("raw/strangeDatabase")
-
-# Run inference and compute similarity scores
-strange_hand = run_inference(strange_hand_paths, 50)
+def l2_normalize(embeddings):
+    # Calculate the L2 norm for each vector
+    l2_norm = torch.norm(embeddings, p=2, dim=1, keepdim=True)
+    # Normalize each vector by dividing by its L2 norm
+    normalized_embeddings = embeddings / l2_norm
+    return normalized_embeddings
 
 
-def strange_hand_test(strange_hand, outputs):
-    """Calculate top 5 similarities for each strange hand to the outputs list."""
-    # Normalize the output tensors
-    outputs = outputs / outputs.norm(dim=1, keepdim=True)  # Normalize to unit vectors
-    strange_hand = strange_hand / strange_hand.norm(
-        dim=1, keepdim=True
-    )  # Normalize strange hand
+# image_paths = get_image_paths("raw/test")
+# outputs = run_inference(image_paths)
+# outputs = l2_normalize(outputs)
 
-    top_similarities = []
+# image_embedding_dict = {}
+# for idx, output in enumerate(outputs):
+#     image_embedding_dict[image_paths[idx]] = output
 
-    # Iterate over each strange hand
-    for i in tqdm(
-        range(strange_hand.size(0)), desc="Calculating similarities for strange hand"
+
+def euclidean_distance(tensor1, tensor2):
+    return torch.cdist(tensor1.unsqueeze(0), tensor2.unsqueeze(0), p=2).item()
+
+
+def extract_class(img_name):
+    return img_name.split("_")[-1].split(".")[0]
+
+
+from collections import defaultdict
+
+
+def calculate_voting_accuracy(image_embedding_dict):
+    """
+    Calculate accuracy based on class voting mechanism.
+    A class is considered correctly classified if more than 50% of its images
+    are correctly matched to the same class.
+    """
+    # Create class to images mapping
+    class_to_images = defaultdict(list)
+    for img_path in image_embedding_dict.keys():
+        img_class = extract_class(img_path)
+        class_to_images[img_class].append(img_path)
+
+    # Convert embeddings to tensor for batch computation
+    embeddings_tensor = torch.stack(list(image_embedding_dict.values()))
+    pairwise_distances = torch.cdist(embeddings_tensor, embeddings_tensor, p=2)
+
+    # Store image paths in a list to map indices to paths
+    image_paths_list = list(image_embedding_dict.keys())
+
+    # Calculate accuracy for each class
+    correct_classes = 0
+    total_classes = len(class_to_images)
+
+    print(f"\nProcessing {total_classes} classes...")
+
+    # Process each class
+    for class_name, class_images in tqdm(
+        class_to_images.items(), desc="Processing Classes"
     ):
-        # Compute similarity of the i-th strange hand with all outputs
-        similarity_scores = torch.mm(
-            strange_hand[i].unsqueeze(0), outputs.t()
-        ).squeeze()
+        correct_matches_in_class = 0
+        total_images_in_class = len(class_images)
+        similarity_scores = []
+        # Process each image in the class
+        for img_path in class_images:
+            # Get the index of the current image
+            img_idx = image_paths_list.index(img_path)
 
-        # Get the top 5 most similar indices and scores
-        top5_scores, top5_indices = torch.topk(similarity_scores, 5)
+            # Get distances for the current image, excluding self
+            distances = pairwise_distances[img_idx]
+            distances[img_idx] = float("inf")  # Exclude self
 
-        # Append the top 5 results for this strange hand
-        top_similarities.append((top5_scores.tolist(), top5_indices.tolist()))
+            # Find the closest image
+            closest_idx = torch.argmin(distances).item()
+            closest_image = image_paths_list[closest_idx]
+            min_distance = distances[closest_idx].item()
 
-    return top_similarities
+            # Check if the closest image belongs to the same class
+            if extract_class(closest_image) == class_name:
+                correct_matches_in_class += 1
+                similarity_scores.append(min_distance)
 
-
-strange_hand_similarities = strange_hand_test(strange_hand, outputs)
-
-# Output: A list where each entry contains top 5 scores and indices for one strange hand
-for i, (scores, indices) in enumerate(strange_hand_similarities):
-    print(f"Strange Hand {strange_hand_paths[i]}:")
-    print(f"  Top 5 scores: {scores}")
-    print(f"  Top 5 indices: {image_paths[indices[0]]}")
-    print(f"  Top 5 indices: {image_paths[indices[1]]}")
-    print(f"  Top 5 indices: {image_paths[indices[2]]}")
-    print(f"  Top 5 indices: {image_paths[indices[3]]}")
-    print(f"  Top 5 indices: {image_paths[indices[4]]}")
-
-
-def cosine_similarity_list(outputs):
-    """Calculate a list of similarities for each image."""
-    # Normalize the output tensors
-    outputs = outputs / outputs.norm(dim=1, keepdim=True)  # Normalize to unit vectors
-    similarities = []
-
-    # Use tqdm for a progress bar over the range of outputs
-    for i in tqdm(range(outputs.size(0)), desc="Calculating similarities"):
-        # Compute similarity of the i-th image with all others
-        similarity_scores = (
-            torch.mm(outputs[i].unsqueeze(0), outputs.t()).squeeze().tolist()
+        # Calculate accuracy for this class
+        class_accuracy = correct_matches_in_class / total_images_in_class
+        avg_similarity = (
+            sum(similarity_scores) / len(similarity_scores) if similarity_scores else 0
         )
-        similarities.append(similarity_scores)
+        # If more than 50% of images in this class are correctly matched,
+        # count this class as correctly classified
+        if class_accuracy > 0.5 and avg_similarity < 0.3:
+            correct_classes += 1
 
-    return similarities
+    # Calculate overall accuracy
+    final_accuracy = (correct_classes / total_classes) * 100
 
+    print(f"\nFinal Results:")
+    print(f"Total classes: {total_classes}")
+    print(f"Correctly classified classes: {correct_classes}")
+    print(f"Overall accuracy: {final_accuracy:.2f}%")
 
-similarity_list = cosine_similarity_list(outputs)
-
-image_similarity_dict = {}
-
-for idx, (image_path, similarities) in enumerate(zip(image_paths, similarity_list)):
-    similarity_with_images = {
-        image_paths[j]: similarity
-        for j, similarity in enumerate(similarities)
-        if j != idx
-    }
-    image_similarity_dict[image_path] = similarity_with_images
+    return final_accuracy
 
 
-def get_group_number(image_path):
-    # Assuming the group number is the last number before the file extension
-    return image_path.split("_")[-1].split(".")[0]
+def calculate_top_1(image_embedding_dict, total_images, pairwise_distances):
+    correct_matches = 0
+    for i, (img_name_1, embedding_1) in tqdm(
+        enumerate(image_embedding_dict.items()), desc="Processing Images", unit="image"
+    ):
+        img_class_1 = extract_class(img_name_1)  # Extract class of img_name_1
+
+        # Get the distances for the current image, excluding self distance
+        distances = pairwise_distances[i]
+        distances[i] = float("inf")  # Exclude distance to itself
+
+        # Find the index of the closest image
+        closest_index = torch.argmin(distances).item()
+        closest_image = list(image_embedding_dict.keys())[closest_index]
+
+        # Extract class of the closest image
+        img_class_2 = extract_class(closest_image)
+
+        # Check if the closest image belongs to the same class
+        if img_class_1 == img_class_2:
+            correct_matches += 1
+
+    # Calculate the accuracy
+    accuracy = correct_matches / total_images
+    accuracy *= 100
+    print(f"Top 1: {accuracy:.4f}%")
 
 
-group_image_count = defaultdict(int)
-for image_path in image_paths:
-    group_number = get_group_number(image_path)
-    group_image_count[group_number] += 1
+# Usage in your existing code:
+def main():
+    # Your existing code for loading model and preprocessing...
 
-correct_match_count = 0
+    image_paths = get_image_paths("raw/test")
+    outputs = run_inference(image_paths)
+    outputs = l2_normalize(outputs)
 
-occurrence = {}
-for image_path, similarity_mapping in image_similarity_dict.items():
-    group_number = get_group_number(image_path)
+    # Create image embedding dictionary
+    image_embedding_dict = {}
+    for idx, output in enumerate(outputs):
+        image_embedding_dict[image_paths[idx]] = output
 
-    most_similar_image = max(similarity_mapping, key=similarity_mapping.get)
+    total_images = len(image_embedding_dict)
+    embeddings_tensor = torch.stack(list(image_embedding_dict.values()))
+    pairwise_distances = torch.cdist(embeddings_tensor, embeddings_tensor, p=2)
+    calculate_top_1(image_embedding_dict, total_images, pairwise_distances)
+    # Compute the closest image and check class match
 
-    most_similar_group = get_group_number(most_similar_image)
-    similarity_score = similarity_mapping[most_similar_image]
-    if group_number not in occurrence:
-        occurrence[str(group_number)] = {
-            "match_count": 0,
-            "total_occurrences": 0,
-            "similarity_sum": 0.0,
-        }
-    occurrence[str(group_number)]["total_occurrences"] += 1
-
-    if group_number == most_similar_group:
-        occurrence[str(group_number)]["match_count"] += 1
-        occurrence[str(group_number)]["similarity_sum"] += similarity_score
-        correct_match_count += 1
-
-max_group_size = len(image_paths)
-score = correct_match_count / max_group_size
-
-print(f"Perfomance score: {score}")
+    # Calculate voting-based accuracy
+    accuracy = calculate_voting_accuracy(image_embedding_dict)
 
 
-def final_score(occurrence):
-    total_groups = len(occurrence)
-    score = 0
-
-    for group_number, data in occurrence.items():
-        match_count = data["match_count"]
-        total_occurrences = data["total_occurrences"]
-
-        # Check if match count is greater than 60% of total occurrences
-        if match_count / total_occurrences > 0.6:
-            score += 1
-        else:
-            score += (
-                0  # Optional, you could skip this since it doesn't affect the score
-            )
-
-    # Return the final score divided by the total number of groups
-    return score / total_groups if total_groups > 0 else 0
-
-
-perfomance = final_score(occurrence)
-print(f"Final performance: {perfomance}")
+if __name__ == "__main__":
+    main()

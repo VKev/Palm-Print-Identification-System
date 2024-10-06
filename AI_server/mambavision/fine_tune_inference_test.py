@@ -4,12 +4,13 @@ from torchvision import transforms
 from tqdm import tqdm
 from models import mamba_vision_L2
 from scipy.spatial.distance import cosine
+from torch.nn.functional import normalize
 
 # Load the model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = mamba_vision_L2()  # Initialize the model without pretrained weights
 model.load_state_dict(
-    torch.load(r"checkpoints/batch4/fine_tuned_mamba_vision_L2_e11.pth")
+    torch.load(r"checkpoints/fine_tuned_mamba_vision_L2_e15.pth")
 )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
@@ -88,12 +89,12 @@ image_paths = get_image_paths("raw/test")
 
 # Run inference and compute similarity scores
 outputs = run_inference(image_paths)
-outputs = l2_normalize(outputs)
+outputs = normalize(outputs)
 
 strange_paths = get_image_paths("raw/strange")
 
 strange_outputs = run_inference(strange_paths)
-strange_outputs = l2_normalize(strange_outputs)
+strange_outputs = normalize(strange_outputs)
 
 
 def euclidean_distance(tensor1, tensor2):
@@ -107,7 +108,7 @@ for i, strange_embedding in enumerate(strange_outputs):
 
     # Calculate distances between this strange_embedding and all output embeddings
     distances = []
-    min_ = 1000000
+    min_ = float("inf")
     name = ""
     for j, output_embedding in enumerate(outputs):
         distance = euclidean_distance(strange_embedding, output_embedding)

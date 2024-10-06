@@ -6,9 +6,73 @@ from PIL import Image
 from models import mamba_vision_L2
 from torch.nn.functional import normalize
 import random
+import torch.nn.functional as F
 import os
 from tqdm import tqdm
 import re
+
+
+class SemiHardTripletLoss(nn.Module):
+    def __init__(self, margin=1.0):
+        super(SemiHardTripletLoss, self).__init__()
+        self.margin = margin
+        self.eps = 1e-6
+
+    def forward(self, anchors, positives, negatives_list):
+        """
+        Compute the semi-hard triplet loss with multiple negatives per anchor-positive pair.
+
+        Args:
+            anchors: tensor of shape (batch_size, embedding_dim)
+            positives: tensor of shape (batch_size, embedding_dim)
+            negatives_list: list of tensors, each of shape (batch_size, embedding_dim)
+
+        Returns:
+            loss: mean of valid triplet losses across all negatives
+        """
+        batch_size = anchors.size(0)
+        num_negatives = len(negatives_list)
+        # Stack negatives along a new dimension for easier broadcasting
+        negatives = torch.stack(
+            negatives_list, dim=1
+        )  # (batch_size, num_negatives, embedding_dim)
+
+        # Compute positive distances and expand them for broadcasting
+        pos_dist = torch.norm(
+            anchors - positives, p=2, dim=1, keepdim=True
+        )  # (batch_size, 1)
+        pos_dist = pos_dist.expand(
+            batch_size, num_negatives
+        )  # (batch_size, num_negatives)
+
+        # Compute negative distances for all negatives
+        neg_dist = torch.norm(
+            anchors.unsqueeze(1) - negatives, p=2, dim=2
+        )  # (batch_size, num_negatives)
+
+        # Semi-hard negative: further than positive but within margin
+        semi_hard_mask = (neg_dist > pos_dist) & (neg_dist < pos_dist + self.margin)
+
+        # Hard negative: closer than positive
+        hard_mask = neg_dist <= pos_dist
+
+        # Combine masks for valid triplets
+        valid_mask = semi_hard_mask | hard_mask
+
+        # Compute triplet loss for valid triplets
+        triplet_loss = pos_dist - neg_dist + self.margin  # (batch_size, num_negatives)
+        triplet_loss = torch.clamp(triplet_loss, min=0.0)  # Ensure non-negative loss
+
+        # Apply the valid triplet mask
+        valid_triplet_loss = triplet_loss[valid_mask]
+
+        # If no valid triplets, return zero loss with gradient
+        if valid_triplet_loss.numel() == 0:
+            return torch.tensor(0.0, device=anchors.device, requires_grad=True)
+
+        # Return mean of valid triplet losses
+        return valid_triplet_loss.mean()
+
 
 # Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -16,9 +80,11 @@ batch_size = 1
 epoch = 30
 lr = 1e-5
 test = True
+n_negatives = 16
 
 if test:
-    batch_size = 10
+    n_negatives = 3
+    batch_size = 5
     train_size = 100
 
 
@@ -41,9 +107,14 @@ class CombinedTripletDataset(Dataset):
 
 # Define the dataset for triplet loss
 class TripletDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None, augmentation=None):
+    def __init__(
+        self, image_paths, labels, n_negatives, transform=None, augmentation=None
+    ):
         self.image_paths = image_paths
         self.labels = labels
+        self.n_negatives = (
+            n_negatives  # Number of negative samples per anchor-positive pair
+        )
         self.transform = transform
         self.augmentation = augmentation
 
@@ -64,16 +135,25 @@ class TripletDataset(Dataset):
         positive_idx = random.choice(positive_indices)
         positive_image = Image.open(self.image_paths[positive_idx]).convert("RGB")
 
-        # Negative image (different label)
+        # Get multiple negative images (different labels)
         negative_indices = [
             i for i, label in enumerate(self.labels) if label != anchor_label
         ]
-        negative_idx = random.choice(negative_indices)
-        negative_image = Image.open(self.image_paths[negative_idx]).convert("RGB")
+        negative_images = []
+        selected_negative_indices = random.sample(negative_indices, self.n_negatives)
+        for neg_idx in selected_negative_indices:
+            negative_image = Image.open(self.image_paths[neg_idx]).convert("RGB")
 
-        # Apply augmentations (rotation, color jitter, etc.)
+            # Apply augmentations or transformations
+            if self.augmentation and random.random() < 0.5:
+                negative_image = self.augmentation(negative_image)
+            else:
+                negative_image = self.transform(negative_image)
+
+            negative_images.append(negative_image)
+
+        # Apply augmentations to anchor and positive images
         if self.augmentation:
-            # Apply augmentation to anchor, positive, negative images randomly
             if random.random() < 0.5:
                 anchor_image = self.augmentation(anchor_image)
             else:
@@ -83,18 +163,12 @@ class TripletDataset(Dataset):
                 positive_image = self.augmentation(positive_image)
             else:
                 positive_image = self.transform(positive_image)
-
-            if random.random() < 0.5:
-                negative_image = self.augmentation(negative_image)
-            else:
-                negative_image = self.transform(negative_image)
         else:
-            # If no augmentation, apply standard transformation to all images
             anchor_image = self.transform(anchor_image)
             positive_image = self.transform(positive_image)
-            negative_image = self.transform(negative_image)
 
-        return anchor_image, positive_image, negative_image
+        # Return a tuple of (anchor, positive, [negative1, negative2, ..., negativeN])
+        return anchor_image, positive_image, negative_images
 
 
 # Define augmentations
@@ -159,9 +233,15 @@ if test:
     labels = labels[:train_size]
 # Preprocessing
 # Load the dataset
-triplet_default_dataset = TripletDataset(image_paths, labels, transform=transform)
+triplet_default_dataset = TripletDataset(
+    image_paths, labels, transform=transform, n_negatives=n_negatives
+)
 triplet_argumentation_dataset = TripletDataset(
-    image_paths, labels, augmentation=augmentation, transform=transform
+    image_paths,
+    labels,
+    augmentation=augmentation,
+    transform=transform,
+    n_negatives=n_negatives,
 )
 
 # Split the dataset into training and validation sets (e.g., 80% training, 20% validation)
@@ -196,33 +276,37 @@ os.makedirs("checkpoints", exist_ok=True)
 
 
 # Validation function
-def validate(model, loader, criterion):
-    model.eval()  # Set model to evaluation mode
-    val_loss = 0.0
+def validate(model, val_loader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    total_batches = 0
 
-    with torch.no_grad():  # Disable gradient calculation
-        for anchor, positive, negative in loader:
-            anchor, positive, negative = (
-                anchor.to(device),
-                positive.to(device),
-                negative.to(device),
-            )
+    with torch.no_grad():
+        for anchor, positive, negatives in val_loader:
+            anchor = anchor.to(device)
+            positive = positive.to(device)
+            negatives = [neg.to(device) for neg in negatives]
 
-            # Forward pass
+            # Get embeddings
             anchor_features = model.forward_features(anchor)
             positive_features = model.forward_features(positive)
-            negative_features = model.forward_features(negative)
+            negative_features = [model.forward_features(neg) for neg in negatives]
 
             # Normalize features
-            anchor_features = normalize(anchor_features, p=2, dim=1)
-            positive_features = normalize(positive_features, p=2, dim=1)
-            negative_features = normalize(negative_features, p=2, dim=1)
+            anchor_features = F.normalize(anchor_features, p=2, dim=1)
+            positive_features = F.normalize(positive_features, p=2, dim=1)
+            negative_features = [
+                F.normalize(neg_feat, p=2, dim=1) for neg_feat in negative_features
+            ]
 
-            # Compute validation loss
+            # Compute loss
             loss = criterion(anchor_features, positive_features, negative_features)
-            val_loss += loss.item()
 
-    return val_loss / len(loader)
+            running_loss += loss.item()
+            total_batches += 1
+
+    model.train()
+    return running_loss / total_batches
 
 
 def load_test_from_folders(base_folder):
@@ -260,105 +344,135 @@ if test:
     test_labels = test_labels[:train_size]
 
 # Preprocessing for test dataset
-test_dataset = TripletDataset(test_image_paths, test_labels, transform=transform)
+test_dataset = TripletDataset(
+    test_image_paths, test_labels, transform=transform, n_negatives=n_negatives
+)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
 # Validation and test functions (they can be similar)
-def test(model, loader, criterion):
-    model.eval()  # Set model to evaluation mode
-    test_loss = 0.0
+def test(model, test_loader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    total_batches = 0
 
-    with torch.no_grad():  # Disable gradient calculation
-        for anchor, positive, negative in loader:
-            anchor, positive, negative = (
-                anchor.to(device),
-                positive.to(device),
-                negative.to(device),
-            )
+    with torch.no_grad():
+        for anchor, positive, negatives in test_loader:
+            anchor = anchor.to(device)
+            positive = positive.to(device)
+            negatives = [neg.to(device) for neg in negatives]
 
-            # Forward pass
+            # Get embeddings
             anchor_features = model.forward_features(anchor)
             positive_features = model.forward_features(positive)
-            negative_features = model.forward_features(negative)
+            negative_features = [model.forward_features(neg) for neg in negatives]
 
             # Normalize features
-            anchor_features = normalize(anchor_features, p=2, dim=1)
-            positive_features = normalize(positive_features, p=2, dim=1)
-            negative_features = normalize(negative_features, p=2, dim=1)
+            anchor_features = F.normalize(anchor_features, p=2, dim=1)
+            positive_features = F.normalize(positive_features, p=2, dim=1)
+            negative_features = [
+                F.normalize(neg_feat, p=2, dim=1) for neg_feat in negative_features
+            ]
 
-            # Compute test loss
+            # Compute loss
             loss = criterion(anchor_features, positive_features, negative_features)
-            test_loss += loss.item()
 
-    return test_loss / len(loader)
+            running_loss += loss.item()
+            total_batches += 1
+
+    model.train()
+    return running_loss / total_batches
 
 
-test_loss = test(model, test_loader, triplet_loss)
+criterion = SemiHardTripletLoss(margin=1.0).to(device)
+test_loss = test(model, test_loader, criterion, device)
 print(f"Before fine tune, Test Loss: {test_loss}")
+min_test_loss = test_loss
 
 
 # Training loop with triplet loss and validation
-def train(model, train_loader, val_loader, criterion, optimizer, epochs=10):
-    model.train()  # Set model to training mode
+def train(
+    model, train_loader, val_loader, test_loader, optimizer, epochs=10, device="cuda"
+):
+    # Initialize the semi-hard triplet loss
+    criterion = SemiHardTripletLoss(margin=1.0).to(device)
+    model.train()
 
     for epoch in range(epochs):
         running_loss = 0.0
+        total_batches = 0
 
-        # Add tqdm progress bar for each epoch
         epoch_iterator = tqdm(
             train_loader, desc=f"Epoch [{epoch+1}/{epochs}]", unit="batch"
         )
 
-        for i, (anchor, positive, negative) in enumerate(epoch_iterator):
-            anchor, positive, negative = (
-                anchor.to(device),
-                positive.to(device),
-                negative.to(device),
-            )
+        for i, (anchor, positive, negatives) in enumerate(epoch_iterator):
+            anchor = anchor.to(device)
+            positive = positive.to(device)
+            negatives = [neg.to(device) for neg in negatives]
 
-            # Forward pass: extract features
+            # Get embeddings
             anchor_features = model.forward_features(anchor)
             positive_features = model.forward_features(positive)
-            negative_features = model.forward_features(negative)
+            negative_features = [model.forward_features(neg) for neg in negatives]
 
             # Normalize features
-            anchor_features = normalize(anchor_features, p=2, dim=1)
-            positive_features = normalize(positive_features, p=2, dim=1)
-            negative_features = normalize(negative_features, p=2, dim=1)
+            anchor_features = F.normalize(anchor_features, p=2, dim=1)
+            positive_features = F.normalize(positive_features, p=2, dim=1)
+            negative_features = [
+                F.normalize(neg_feat, p=2, dim=1) for neg_feat in negative_features
+            ]
 
             # Compute loss
             loss = criterion(anchor_features, positive_features, negative_features)
 
             # Backward pass and optimization
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
 
-            running_loss += loss.item()
+            # Check if the loss is non-zero before proceeding
+            if loss.item() > 0:
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
+                total_batches += 1
 
-        avg_loss = running_loss / len(train_loader)
+            epoch_iterator.set_postfix({"loss": loss.item()})
+
+        avg_loss = running_loss / total_batches
         print(f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}")
 
         # Validate the model after each epoch
-        val_loss = validate(model, val_loader, criterion)
+        val_loss = validate(model, val_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Validation Loss: {val_loss}")
 
-        test_loss = test(model, test_loader, criterion)
+        test_loss = test(model, test_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Test Loss: {test_loss}")
 
         # Log the epoch, training loss, and validation loss to a file
         with open("checkpoints/training_log.txt", "a") as log_file:
             log_file.write(
-                f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}\n"
+                f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}, "
+                f"Validation Loss: {val_loss}, Test Loss: {test_loss}\n"
             )
 
-        torch.save(
-            model.state_dict(), f"checkpoints/fine_tuned_mamba_vision_L2_e{epoch+1}.pth"
-        )
+        # Save model checkpoint
+        if test_loss < min_test_loss:
+            torch.save(
+                model.state_dict(),
+                f"checkpoints/fine_tuned_mamba_vision_L2_e{epoch+1}.pth",
+            )
+            min_test_loss = test_loss
 
 
 # Run the training process with progress bars and validation
-train(model, train_loader, val_loader, triplet_loss, optimizer, epochs=epoch)
+train(
+    model,
+    train_loader,
+    val_loader,
+    test_loader,
+    optimizer,
+    epochs=epoch,
+    device=device,
+)
 
 # Save the fine-tuned model
