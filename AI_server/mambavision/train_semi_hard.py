@@ -424,7 +424,7 @@ def train(
             loss = criterion(anchor_features, positive_features, negative_features)
 
             # Backward pass and optimization
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
             # Check if the loss is non-zero before proceeding
             if loss.item() > 0:
@@ -432,16 +432,20 @@ def train(
                 optimizer.step()
                 running_loss += loss.item()
                 total_batches += 1
-
+            del anchor_features, positive_features, negative_features
+            del anchor, positive, negatives
+            torch.cuda.empty_cache()
             epoch_iterator.set_postfix({"loss": loss.item()})
 
         avg_loss = running_loss / total_batches
         print(f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}")
 
+        torch.cuda.empty_cache()
         # Validate the model after each epoch
         val_loss = validate(model, val_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Validation Loss: {val_loss}")
 
+        torch.cuda.empty_cache()
         test_loss = test(model, test_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Test Loss: {test_loss}")
 
@@ -459,6 +463,8 @@ def train(
                 f"checkpoints/fine_tuned_mamba_vision_L2_e{epoch+1}.pth",
             )
             min_test_loss = test_loss
+
+        torch.cuda.empty_cache()
 
 
 # Run the training process with progress bars and validation
