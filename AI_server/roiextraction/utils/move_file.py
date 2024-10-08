@@ -92,15 +92,79 @@ def move_images_to_root(path):
                 print(f"Moved: {source} -> {destination}")
 
 
+import os
+import shutil
+from pathlib import Path
+from collections import defaultdict
+
+
+def move_half_per_label(source_path, destination_path):
+    """
+    For each label type, move half of the images to a new location.
+
+    Args:
+        source_path (str): Source directory containing the images
+        destination_path (str): Destination directory where images will be moved
+    """
+    # Create destination directory if it doesn't exist
+    Path(destination_path).mkdir(parents=True, exist_ok=True)
+
+    # Get all image files recursively
+    all_files = []
+    for root, _, files in os.walk(source_path):
+        for file in files:
+            if file.endswith(
+                (".jpg", ".jpeg", ".png", ".JPG")
+            ):  # Add more extensions if needed
+                all_files.append(os.path.join(root, file))
+
+    # Group files by label
+    label_files = defaultdict(list)
+    for file_path in all_files:
+        file_name = os.path.basename(file_path)
+        # Get the label part (e.g., 's4_0' or 's4_1')
+        label = "_".join(file_name.split("_")[1:])
+        label_files[label].append(file_path)
+
+    # For each label, move half of the files
+    for label, files in label_files.items():
+        # Sort files to ensure consistent splitting
+        sorted_files = sorted(files)
+        # Calculate how many files to move (half)
+        num_to_move = len(sorted_files) // 2
+        files_to_move = sorted_files[:num_to_move]
+
+        print(f"\nMoving {num_to_move} files for label {label}")
+
+        # Move the files
+        for file_path in files_to_move:
+            # Preserve relative path structure
+            rel_path = os.path.relpath(file_path, source_path)
+            new_path = os.path.join(destination_path, rel_path)
+
+            # Create necessary subdirectories
+            os.makedirs(os.path.dirname(new_path), exist_ok=True)
+
+            # Move the file
+            shutil.move(file_path, new_path)
+            print(f"Moved: {file_path} -> {new_path}")
+
+
 # Example usage
 if __name__ == "__main__":
-    move_images(
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\tett\015",
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\tett",
-        r".*",
-    )
-    # move_images(
-    #     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\001",
-    #     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\004",
-    #     r".*s3.*",
-    # )
+    source_dir = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\test - Copy"
+    dest_dir = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\straing - copy"
+    move_half_per_label(source_dir, dest_dir)
+
+# Example usage
+# if __name__ == "__main__":
+#     move_images(
+#         r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\tett\015",
+#         r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\tett",
+#         r".*",
+#     )
+# move_images(
+#     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\001",
+#     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\004",
+#     r".*s3.*",
+# )
