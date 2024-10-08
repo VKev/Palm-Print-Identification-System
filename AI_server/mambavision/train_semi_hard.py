@@ -2,6 +2,7 @@ import torch
 from torch import nn, optim
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, random_split
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from PIL import Image
 from models import mamba_vision_L2
 from torch.nn.functional import normalize
@@ -16,14 +17,28 @@ import re
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 batch_size = 1
 epoch = 30
-lr = 1e-5
+lr = 1e-4
 test = True
 n_negatives = 16
+weight_decay = 0.001
+min_lr = 1e-6
 
 if test:
     n_negatives = 5
     batch_size = 5
     train_size = 40
+
+# Load the pre-trained model
+model = mamba_vision_L2(pretrained=True).to(device)
+# Freeze all layers except the last few
+for param in model.parameters():
+    param.requires_grad = False
+
+
+last_mamba_layer = model.levels[-1]
+
+for param in last_mamba_layer.parameters():
+    param.requires_grad = True
 
 
 class SemiHardTripletLoss(nn.Module):
@@ -248,6 +263,10 @@ triplet_argumentation_dataset = TripletDataset(
 combined_dataset = CombinedTripletDataset(
     triplet_default_dataset, triplet_argumentation_dataset
 )
+
+indices = list(range(len(combined_dataset)))
+torch.random.shuffle(indices)
+
 train_size = int(0.9 * len(combined_dataset))
 val_size = len(combined_dataset) - train_size
 train_dataset, val_dataset = random_split(combined_dataset, [train_size, val_size])
@@ -256,20 +275,18 @@ train_dataset, val_dataset = random_split(combined_dataset, [train_size, val_siz
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-# Load the pre-trained model
-model = mamba_vision_L2(pretrained=True).to(device)
-# Freeze all layers except the last few
-for param in model.parameters():
-    param.requires_grad = False
-
-last_mamba_layer = model.levels[-1]
-
-for param in last_mamba_layer.parameters():
-    param.requires_grad = True
 
 # Loss function and optimizer
 triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
-optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
+optimizer = optim.AdamW(
+    filter(lambda p: p.requires_grad, model.parameters()),
+    lr=lr,
+    weight_decay=weight_decay,
+    betas=(0.9, 0.999),
+    eps=1e-8,
+)
+
+scheduler = CosineAnnealingLR(optimizer, T_max=epoch, eta_min=min_lr)
 
 # Ensure checkpoint directory exists
 os.makedirs("checkpoints", exist_ok=True)
@@ -386,11 +403,18 @@ def test(model, test_loader, criterion, device):
 
 # Training loop with triplet loss and validation
 def train(
-    model, train_loader, val_loader, test_loader, optimizer, epochs=10, device="cuda"
+    model,
+    train_loader,
+    val_loader,
+    test_loader,
+    optimizer,
+    scheduler,
+    epochs=10,
+    device="cuda",
 ):
-    # Initialize the semi-hard triplet loss
     criterion = SemiHardTripletLoss(margin=1.0).to(device)
     model.train()
+
     test_loss = test(model, test_loader, criterion, device)
     print(f"Before fine tune, Test Loss: {test_loss}")
     min_test_loss = test_loss
@@ -398,6 +422,9 @@ def train(
     for epoch in range(epochs):
         running_loss = 0.0
         total_batches = 0
+
+        # Get current learning rate
+        current_lr = optimizer.param_groups[0]["lr"]
 
         epoch_iterator = tqdm(
             train_loader, desc=f"Epoch [{epoch+1}/{epochs}]", unit="batch"
@@ -408,55 +435,53 @@ def train(
             positive = positive.to(device)
             negatives = [neg.to(device) for neg in negatives]
 
-            # Get embeddings
             anchor_features = model.forward_features(anchor)
             positive_features = model.forward_features(positive)
             negative_features = [model.forward_features(neg) for neg in negatives]
 
-            # Normalize features
             anchor_features = F.normalize(anchor_features, p=2, dim=1)
             positive_features = F.normalize(positive_features, p=2, dim=1)
             negative_features = [
                 F.normalize(neg_feat, p=2, dim=1) for neg_feat in negative_features
             ]
 
-            # Compute loss
             loss = criterion(anchor_features, positive_features, negative_features)
 
-            # Backward pass and optimization
             optimizer.zero_grad(set_to_none=True)
 
-            # Check if the loss is non-zero before proceeding
             if loss.item() > 0:
                 loss.backward()
                 optimizer.step()
+
                 running_loss += loss.item()
                 total_batches += 1
+
             del anchor_features, positive_features, negative_features
             del anchor, positive, negatives
             torch.cuda.empty_cache()
-            epoch_iterator.set_postfix({"loss": loss.item()})
+
+            epoch_iterator.set_postfix({"loss": loss.item(), "lr": current_lr})
+
+        # Step the scheduler at the end of each epoch
+        scheduler.step()
 
         avg_loss = running_loss / total_batches
         print(f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}")
 
-        torch.cuda.empty_cache()
-        # Validate the model after each epoch
         val_loss = validate(model, val_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Validation Loss: {val_loss}")
 
-        torch.cuda.empty_cache()
         test_loss = test(model, test_loader, criterion, device)
         print(f"Epoch [{epoch+1}/{epochs}], Test Loss: {test_loss}")
 
-        # Log the epoch, training loss, and validation loss to a file
         with open("checkpoints/training_log.txt", "a") as log_file:
             log_file.write(
-                f"Epoch [{epoch+1}/{epochs}], Training Loss: {avg_loss}, "
-                f"Validation Loss: {val_loss}, Test Loss: {test_loss}\n"
+                f"Epoch [{epoch+1}/{epochs}], LR: {current_lr}, "
+                f"Training Loss: {avg_loss}, "
+                f"Validation Loss: {val_loss}, "
+                f"Test Loss: {test_loss}\n"
             )
 
-        # Save model checkpoint
         if test_loss < min_test_loss:
             torch.save(
                 model.state_dict(),
@@ -474,6 +499,7 @@ train(
     val_loader,
     test_loader,
     optimizer,
+    scheduler,
     epochs=epoch,
     device=device,
 )

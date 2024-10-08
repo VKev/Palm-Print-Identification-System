@@ -9,7 +9,7 @@ from scipy.spatial.distance import cosine
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = mamba_vision_L2()  # Initialize the model without pretrained weights
 model.load_state_dict(
-    torch.load(r"checkpoints/best/fine_tuned_mamba_vision_L2_e15.pth")
+    torch.load(r"checkpoints/5/fine_tuned_mamba_vision_L2_e1.pth")
 )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
@@ -84,13 +84,13 @@ def l2_normalize(embeddings):
 
 
 # Example usage
-image_paths = get_image_paths("raw/test")
+image_paths = get_image_paths(r"raw/test - Copy")
 
 # Run inference and compute similarity scores
 outputs = run_inference(image_paths)
 outputs = l2_normalize(outputs)
 
-strange_paths = get_image_paths("raw/strange")
+strange_paths = get_image_paths(r"raw/straing - copy")
 
 strange_outputs = run_inference(strange_paths)
 strange_outputs = l2_normalize(strange_outputs)
@@ -115,86 +115,99 @@ def extract_class(image_path):
         return filename_without_ext.split("_")[-1]
 
 
-def calculate_class_matching_score(
-    path1_images, path2_images, min_distance_pairs, min_distances
-):
-    # Create a dictionary to store images by class for path1
-    class_images_path1 = {}
-    for img_path in path1_images:
-        img_class = extract_class(img_path)
-        if img_class not in class_images_path1:
-            class_images_path1[img_class] = []
-        class_images_path1[img_class].append(img_path)
+output_dict = {}
+for idx, image_path in enumerate(image_paths):
+    output_dict[image_path] = outputs[idx]
 
-    # Store classes for path2 images
-    path2_classes = {img_path: extract_class(img_path) for img_path in path2_images}
+strange_output_dict = {}
+for idx, image_path in enumerate(strange_paths):
+    strange_output_dict[image_path] = strange_outputs[idx]
 
-    score = 0
-    total_classes = len(class_images_path1)
-
-    # For each class in path1
-    for class_id, class_images in class_images_path1.items():
-        # Dictionary to count occurrences of each path2 class
-        path2_class_counts = {}
-
-        # For each image in this class from path1
-        class_total_distance = 0
-        for img_path in class_images:
-            # Get the best matching image from path2
-            best_match_path = min_distance_pairs[img_path]
-            # Get the class of the best matching image
-            best_match_class = path2_classes[best_match_path]
-
-            class_total_distance += min_distances[img_path]
-            # Count occurrences of path2 classes
-            path2_class_counts[best_match_class] = (
-                path2_class_counts.get(best_match_class, 0) + 1
-            )
-
-        # Check if any path2 class appears more than 50% of the time
-        avg_distance = class_total_distance / len(class_images)
-
-        # Check both conditions:
-        # 1. Any path2 class appears more than 50% of the time
-        # 2. Average distance is less than 0.3
-        total_images_in_class = len(class_images)
-        meets_frequency_condition = False
-        for count in path2_class_counts.values():
-            if count / total_images_in_class > 0.4:
-                meets_frequency_condition = True
-                break
-
-        # Only increment score if both conditions are met
-        if meets_frequency_condition and avg_distance < 0.2:
-            score += 1
-            print(f"Class {class_id} meets both conditions:")
-            print(f"  Average distance: {avg_distance:.4f}")
-            print(f"  Class distribution: {path2_class_counts}")
-
-    # Calculate final score
-    final_score = 1 - (score / total_classes)
-
-    return final_score
+# print(output_dict)
+# print("\n")
+# print(strange_output_dict)
 
 
-# Create dictionary of minimum distance pairs
-min_distance_pairs = {}
-min_distances = {}
-for i, strange_embedding in enumerate(strange_outputs):
-    min_distance = float("inf")
-    best_match = None
+def one_vs_all(query_embedding, dict):
+    distances = []
+    for key, value in dict.items():
+        distance = euclidean_distance(query_embedding, value)
+        distances.append((key, distance))
+    min_distance_element = min(distances, key=lambda x: x[1])
+    return min_distance_element
 
-    for j, output_embedding in enumerate(outputs):
-        distance = euclidean_distance(strange_embedding, output_embedding)
-        if distance < min_distance:
-            min_distance = distance
-            best_match = image_paths[j]
 
-    min_distance_pairs[strange_paths[i]] = best_match
-    min_distances[strange_paths[i]] = min_distance
+# first_key = next(iter(strange_output_dict))
+# result = one_vs_all(strange_output_dict[first_key], output_dict)
 
-# Calculate and print the final score
-final_score = calculate_class_matching_score(
-    strange_paths, image_paths, min_distance_pairs, min_distances
-)
-print(f"\nFinal Score: {final_score}")
+score = 0
+count_dict = {}
+for strange_key, strange_value in strange_output_dict.items():
+    result = one_vs_all(strange_output_dict[strange_key], output_dict)
+    min_dis_class = extract_class(result[0])
+    min_dis_value = result[1]
+    strang_key_class = extract_class(strange_key)
+    if strang_key_class not in count_dict:
+        count_dict[strang_key_class] = {}
+    if min_dis_class not in count_dict[strang_key_class]:
+        count_dict[strang_key_class][min_dis_class] = (1, min_dis_value)
+    else:
+        count, dis_value = count_dict[strang_key_class][min_dis_class]
+        count_dict[strang_key_class][min_dis_class] = (
+            count + 1,
+            dis_value + min_dis_value,
+        )
+
+    if min_dis_class == strang_key_class:
+        score += 1
+
+
+def get_max_first_value_elements(input_dict):
+    max_first_value = max(value[0] for value in input_dict.values())
+    result = [
+        (key, value) for key, value in input_dict.items() if value[0] == max_first_value
+    ]
+
+    return result
+
+
+def get_min_value_per_count_ratio(input_list):
+    ratios = [
+        (cls, (count, value), value / count) for cls, (count, value) in input_list
+    ]
+
+    min_element = min(ratios, key=lambda x: x[2])
+
+    return min_element[0], min_element[1]
+
+
+def calculate_occur_ratio(min_distance, value):
+    result_count = min_distance[1][0]
+
+    total_count = sum(count for count, _ in value.values())
+
+    occur_ratio = result_count / total_count if total_count > 0 else 0
+
+    return occur_ratio
+
+
+voting_score = 0
+for key, value in count_dict.items():
+    print(f"class {key}: ")
+
+    print(f"Value {value}")
+    max_occur = get_max_first_value_elements(value)
+    min_distance = get_min_value_per_count_ratio(max_occur)
+    print(f"Result {min_distance}")
+    avarage = min_distance[1][1] / min_distance[1][0]
+    print(f"Average {avarage}")
+    occur_ratio = calculate_occur_ratio(min_distance, value)
+    print(f"Occurrence Ratio: {occur_ratio}")
+    metric = (((1 - avarage) + occur_ratio) / 2) * 100
+    print(f"test metric: { metric}%")
+    if key == min_distance[0]:
+        voting_score += 1
+
+print((len(count_dict)))
+print(f"Top 1: {score / (len(strange_output_dict))} ")
+print(f"Top voting: {voting_score / (len(count_dict))} ")
