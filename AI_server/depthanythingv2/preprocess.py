@@ -51,7 +51,7 @@ def background_cut(image):
     depth = (depth - depth.min()) / (depth.max() - depth.min())  # Normalize depth
 
     # Step 3: Create mask based on depth threshold
-    mask = depth < 0.33
+    mask = depth < 0.495
     # 0.475
 
     # Step 4: Black out pixels where the mask is True
@@ -75,9 +75,10 @@ def process_and_blackout_image(image_path):
     depth = model.infer_image(raw_img)  # HxW raw depth map in numpy
     depth = (depth - depth.min()) / (depth.max() - depth.min())  # Normalize depth
 
+    print(depth.max())
     # Step 3: Create mask based on depth threshold
-    mask = depth < 0.33
-    # 0.475 
+    mask = depth < 0.5
+    # 0.475
 
     # Step 4: Black out pixels where the mask is True
     blacked_out_img = raw_img.copy()
@@ -99,5 +100,5 @@ def process_images_in_directory(root_directory):
 
 
 # Example usage:
-root_directory = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Birjand University Mobile Palmprint Database (BMPD)"
+root_directory = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Real-bg-cut"
 process_images_in_directory(root_directory)

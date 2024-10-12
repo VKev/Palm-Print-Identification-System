@@ -30,9 +30,9 @@ import copy
 torch.set_default_dtype(torch.float64)
 import numpy as np
 import cv2
-from ..utils import getTongjiLabels
-from ..models import ROILAnet
-from ..models import TPSGridGen
+from utils import getTongjiLabels
+from models import ROILAnet
+from models import TPSGridGen
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
