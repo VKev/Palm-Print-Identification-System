@@ -1,10 +1,10 @@
 import os
 import torchvision.utils as vutils
-from .app import *
+from app import *
 import re
 import matplotlib.pyplot as plt
 import torchvision.transforms as T
-from .utils import *
+from utils import *
 
 
 def unnormalize_image(tensor, mean, std):
@@ -66,8 +66,8 @@ def process_images_in_folder(input_folder, output_folder):
 
 if __name__ == "__main__":
     preprocessed_img = process_images_in_folder(
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Birjand University Mobile Palmprint Database (BMPD)",
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Birjand University Mobile Palmprint Database (BMPD)",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\non-bg-cut\Real-raw",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\non-bg-cut\Real-roi",
     )
     # visualize_roi_data_agumentation(preprocessed_img)
 
