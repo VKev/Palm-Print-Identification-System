@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react"
-import UserApi from "../service/UserApi";
-import { ACCESS_TOKEN_KEY } from "../config/Constant";
 import UpdateStaffBox from "./UpdateStaffBox";
+import useAxios from "../utils/useAxios";
+import API from "../config/API";
+import LoadEffect from "./LoadEffect";
 
 
 export default function StaffAccountTable() {
 
+    const api = useAxios();
     const [staffAccounts, setStaffAccounts] = useState([])
-
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [fullname, setFullname] = useState('');
@@ -16,16 +17,13 @@ export default function StaffAccountTable() {
 
 
     useEffect(() => {
-        UserApi.getAllStaffAccounts(localStorage.getItem(ACCESS_TOKEN_KEY)).then(
-            response => {
-                setStaffAccounts(response.data.object);
+        const fetchData = async () => {
+            const response = await api.get(API.User.GET_STAFF_ACCOUNTS)
+            if (response.status == 200){
+                setStaffAccounts(response.data.object)
             }
-        )
-            .catch(
-                error => {
-                    console.log(error);
-                }
-            )
+        }
+        fetchData().catch(console.error)
     }, [])
 
 
@@ -48,16 +46,15 @@ export default function StaffAccountTable() {
         else {
             let registerRequest = { username, password, fullname, phone, isEnable: true };
             setStaffAccounts([...staffAccounts, { username, password, fullname, phone, isEnable: true }])
-            UserApi.registerAccount(registerRequest, localStorage.getItem(ACCESS_TOKEN_KEY)).then(
+            api.post(API.User.REGISTER_STAFF_ACCOUNT, registerRequest).then(
                 response => {
                     setRegisterMessage(response.data)
                 }
+            ).then(
+                error => {
+                    console.log(error);
+                }
             )
-                .then(
-                    error => {
-                        console.log(error);
-                    }
-                )
         }
     }
 
@@ -67,14 +64,15 @@ export default function StaffAccountTable() {
                 account.username === username ? { ...account, isEnable: !account.isEnable } : account
             )
         );
-        UserApi.disableEnableAccount(username, localStorage.getItem(ACCESS_TOKEN_KEY)).then()
-        .catch(
-            error => {
-                console.log(error);
-                
-            }
-        )
+        api.put(API.User.DISABLE_ACCOUNT_STAFF + username).then()
+        .catch(error => console.log(error))
     };
+
+    if (!staffAccounts){
+        return (
+            <LoadEffect/>
+        )
+    }
 
 
     return (

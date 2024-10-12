@@ -1,8 +1,10 @@
+/* eslint-disable react/prop-types */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import * as handpose from '@tensorflow-models/handpose';
 import VideoAPI from '../service/VideoAPI';
 import * as tf from '@tensorflow/tfjs';
 import { ACCESS_TOKEN_KEY, DEFAULT_MP4_NAME } from '../config/Constant';
+import handImage from '../assets/hand-frame.jpg'
 
 function VideoRecorderAI({ isOpen, roleNumber }) {
 
@@ -14,13 +16,11 @@ function VideoRecorderAI({ isOpen, roleNumber }) {
   const videoRef = useRef(null);
   const handposeModelRef = useRef(null);
 
-  //console.log("Rolenumber: ", roleNumber);
-  
 
   useEffect(() => {
     async function initTF() {
       await tf.ready();
-      console.log('TensorFlow.js backend:', tf.getBackend());
+      //console.log('TensorFlow.js backend:', tf.getBackend());
     }
     initTF();
   }, []);
@@ -100,11 +100,11 @@ function VideoRecorderAI({ isOpen, roleNumber }) {
       };
 
       mediaRecorder.start();
-      setRecording(true);
+      setRecording(true); 
       setHandDetectionTime(0);
     }
     catch (error) {
-      console.error('Error accessing media devices:', error);
+      alert('Error accessing media devices:', error);
     }
   }, []);
 
@@ -118,30 +118,44 @@ function VideoRecorderAI({ isOpen, roleNumber }) {
   };
 
   return (
-    <div>
+    <div  >
       {
-        isOpen && 
+        isOpen &&
         <div>
-          <video ref={videoRef} autoPlay muted style={{ width: '100%', maxWidth: '700px' }} />
           <div>
-            <button className='btn btn-warning mt-3' onClick={() => startRecording(roleNumber)} disabled={recording}>
+            <button style={{ fontSize: '22px' }} className='btn btn-warning mt-2' onClick={() => startRecording(roleNumber)} disabled={recording}>
               <i className="bi bi-camera-video-fill"></i>&nbsp;&nbsp;&nbsp;
               {recording ? 'Recording...' : 'Start Recording'}
             </button>
             {videoUrl && (
-              <button className='btn btn-success mx-3 mt-3' onClick={downloadVideo}>Download Video</button>
+              <button style={{ fontSize: '22px' }} className='btn btn-success mx-3 mt-3' onClick={downloadVideo}>Download Video</button>
             )}
           </div>
-          <p className='text-danger mt-3' style={{ fontSize: 24 }}>
+
+          <p className='text-danger mt-3' style={{ fontSize: 34 }}>
             {recording
               ? handDetected
                 ? `Hand detected for ${(handDetectionTime / 1000).toFixed(1)} seconds...`
                 : "Waiting for hand detection..."
               : videoUrl
-                ? "Recording complete. You can now download the video."
+                ? "Recording complete. Register successfully."
                 : "Press 'Start Recording' to begin."}
           </p>
-        </div > 
+
+          <div style={{
+            position: "relative",
+            width: '640px',
+            height: '480px',
+            margin: '0 auto'
+          }}>
+
+
+            <video ref={videoRef} autoPlay muted style={{ width: '100%', maxWidth: '700px' }} />
+            <img src={handImage} style={{ position: 'absolute', height: '100%', width: '100%', top: 0, left: 0, pointerEvents: 'none' }} />
+
+          </div >
+        </div>
+
       }
     </div>
 
