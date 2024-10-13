@@ -27,10 +27,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 batch_size = 4
 epochs = 100
 lr = 1e-4
-test = True
-n_negatives = 4
-num_label_negative = 10
-weight_decay = 0.001
+test = False
+n_negatives = 24
+num_label_negative = 16
+weight_decay = 0.00001
 min_lr = 1e-5
 
 # continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_L2_latest.pth"
@@ -58,6 +58,11 @@ last_mamba_layer = model.levels[-1]
 for param in last_mamba_layer.parameters():
     param.requires_grad = True
 
+last_mamba_layer = model.levels[-2]
+
+for param in last_mamba_layer.parameters():
+    param.requires_grad = True
+
 
 train_image_folder = r"raw/train"
 test_image_folder = (
@@ -76,7 +81,7 @@ test_set = TripletDataset(
     test_image_paths,
     test_labels,
     transform=transform,
-    n_negatives=80,
+    n_negatives=100,
     num_classes_for_negative=100,
 )
 
@@ -112,7 +117,7 @@ train_loader = DataLoader(
 )
 val_loader = DataLoader(
     val_dataset,
-    batch_size=batch_size,
+    batch_size=16,
     shuffle=True,
     collate_fn=triplet_collate_fn,
     num_workers=4,
@@ -121,7 +126,7 @@ val_loader = DataLoader(
 )
 test_loader = DataLoader(
     test_set,
-    batch_size=4,
+    batch_size=8,
     shuffle=False,
     collate_fn=triplet_collate_fn,
     num_workers=4,
@@ -192,6 +197,8 @@ if __name__ == "__main__":
             for i, (all_images, num_anchors, num_negatives_per_anchor) in enumerate(
                 epoch_iterator
             ):
+                optimizer.zero_grad(set_to_none=True)
+
                 # print("TEST")
                 all_images = all_images.to(device)
 
@@ -213,7 +220,6 @@ if __name__ == "__main__":
                 loss = triplet_loss(
                     anchors_features, positives_features, negatives_features
                 )
-                optimizer.zero_grad(set_to_none=True)
 
                 if loss.item() > 0:
                     loss.backward()
@@ -229,15 +235,24 @@ if __name__ == "__main__":
                 # print("TEST")
                 # print(negatives)
                 scheduler.step()
+                del anchors_features, positives_features, negatives_features
+                torch.cuda.empty_cache()
             train_loss = (
                 running_loss / total_batches if total_batches > 0 else running_loss
             )
+            torch.cuda.empty_cache()
             val_loss = evaluate(model, val_loader, device)
+            torch.cuda.empty_cache()
             test_loss = evaluate(model, test_loader, device)
-
+            with open("checkpoints/loss.txt", "a") as f:
+                f.write(f"Epoch [{epoch+1}/{epochs}]: ")
+                f.write(f"Training Loss: {train_loss}, ")
+                f.write(f"Validation Loss: {val_loss}, ")
+                f.write(f"Test Loss: {test_loss}\n")
             print(
                 f"Epoch [{epoch+1}/{epochs}]: Training Loss: {train_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}"
             )
+            torch.cuda.empty_cache()
     finally:
         print("Saving checkpoints, don't close!")
         torch.save(
