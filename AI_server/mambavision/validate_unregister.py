@@ -9,7 +9,7 @@ from scipy.spatial.distance import cosine
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = mamba_vision_L2()  # Initialize the model without pretrained weights
 model.load_state_dict(
-    torch.load(r"checkpoints/fine_tuned_mamba_vision_L2_latest.pth")
+    torch.load(r"checkpoints/best/fine_tuned_mamba_vision_L2_latest1.pth")
 )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
@@ -82,12 +82,11 @@ def l2_normalize(embeddings):
 
 
 # Example usage
-image_paths = get_image_paths(r"raw/dataset-test/query-half")
+image_paths = get_image_paths(r"raw/dataset-test/register-half")
 # Run inference and compute similarity scores
 outputs = run_inference(image_paths)
 outputs = l2_normalize(outputs)
-
-strange_paths = get_image_paths(r"raw/dataset-test/register-half")
+strange_paths = get_image_paths(r"raw/dataset-test/query-half")
 
 strange_outputs = run_inference(strange_paths)
 strange_outputs = l2_normalize(strange_outputs)
