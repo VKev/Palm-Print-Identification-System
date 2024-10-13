@@ -1,11 +1,9 @@
-import { useNavigate } from "react-router-dom";
-import { ACCESS_TOKEN_KEY, HOME_PAGE, REFRESH_TOKEN_KEY } from "../config/Constant";
-import AuthenticationAPI from "../service/AuthenticationAPI";
-import { useState } from 'react'
+import { useContext, useState } from 'react'
+import AuthContext from "../context/AuthContext";
 
 export default function LoginPage() {
 
-    const navigator = useNavigate();
+    const { loginUser } = useContext(AuthContext)
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [errorResponse, setErrorResponse] = useState({
@@ -25,24 +23,20 @@ export default function LoginPage() {
             username, password
         }
 
-        //console.log(authRequest);
-
         if (authRequest.username && authRequest.password) {
-            AuthenticationAPI.authenticate(authRequest).then(
-                (response) => {
-                    localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
-                    localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh_token);
-                    navigator(HOME_PAGE);
-                }
-            )
-            .catch(
-                (error) => {
-                    setErrorResponse(error.response.data);
-                    console.log(error.response.data);
-                }
-            )
+            handleLogin(e)
         }
     }
+    
+    async function handleLogin(e) {
+        e.preventDefault(); 
+        try {
+            await loginUser(e, username, password); 
+        } 
+        catch (error) {
+            setErrorResponse(error);
+        }
+      }
 
 
     return (

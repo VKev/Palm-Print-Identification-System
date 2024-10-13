@@ -1,10 +1,11 @@
-
+/* eslint-disable react/prop-types */
 import { useState } from "react";
-import UserApi from "../service/UserApi";
-import { ACCESS_TOKEN_KEY } from "../config/Constant";
+import useAxios from "../utils/useAxios";
+import API from "../config/API";
 
 export default function UpdateStaffBox({ user }) {
 
+    const api = useAxios();
     const [fullname, setFullname] = useState(user.fullname);
     const [phone, setPhone] = useState(user.phone);
     const [updateMessage, setUpdateMessage]  = useState(null)
@@ -20,11 +21,15 @@ export default function UpdateStaffBox({ user }) {
         }
         else {
             let updateStaffRequest = {fullname: fullname, phone: phone}
-            UserApi.updateAccount(user.username, updateStaffRequest, localStorage.getItem(ACCESS_TOKEN_KEY)).then(
+            api.put(API.User.UPDATE_ACCOUNT_STAFF + user?.username, updateStaffRequest)
+            .then(
                 response => {
-                    setUpdateMessage(response.data.object)
+                    if (response.status == 200){
+                        setUpdateMessage('Update staff sucessfully')
+                    }
                 }
             )
+            .catch(error => setUpdateMessage(error))
         }
     }
 

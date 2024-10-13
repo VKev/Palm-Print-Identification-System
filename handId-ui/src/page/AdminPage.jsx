@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
-import { ACCESS_TOKEN_KEY, LOGIN_PAGE, REFRESH_TOKEN_KEY } from "../config/Constant";
-import AuthenticationAPI from "../service/AuthenticationAPI";
+import { useContext, useEffect, useState } from "react";
 import StaffAccountTable from "../components/StaffAccountTable";
-import { useNavigate } from "react-router-dom";
 import StudentDataTable from "../components/StudentDataTable";
+import useAxios from "../utils/useAxios";
+import AuthContext from "../context/AuthContext";
+import API from "../config/API";
 
 
 export default function AdminPage() {
 
+  const api = useAxios()
+  const { logoutUser } = useContext(AuthContext)
+  const options = ['staffAcc', 'stuData']
+  const [option, setOption] = useState(options[0]);
   const [user, setUser] = useState({
     username: '',
     fullname: '',
@@ -15,67 +19,23 @@ export default function AdminPage() {
     phone: ''
   });
 
-  const options = ['staffAcc', 'stuData']
-  const [option, setOption] = useState(options[0]);
-  const navigator = useNavigate();
-
-  const handleChooseOption = (opt) => {
-    setOption(opt)
-  }
-
-  const access_token = localStorage.getItem(ACCESS_TOKEN_KEY);
-  const refresh_token = localStorage.getItem(REFRESH_TOKEN_KEY);
 
   useEffect(() => {
-
-    // console.log(access_token);
-    if (access_token) {
-
-      AuthenticationAPI.getInfo(access_token)
-        .then((response) => {
-          setUser(response.data);
-        })
-        .catch((error) => {
-          console.error("Access token invalid:", error);
-          if (refresh_token) {
-            AuthenticationAPI.refresh(refresh_token).then((response) => {
-              localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
-              return AuthenticationAPI.getInfo(response.data.access_token);
-            })
-              .then((response) => {
-                // console.log(response.data);
-                setUser(response.data);
-              })
-              .catch((refreshError) => {
-                console.error("Error refreshing token:", refreshError);
-                window.location.reload();
-              });
-          }
-          else {
-            navigator(LOGIN_PAGE)
-          }
-        });
-    }
-    else {
-      navigator(LOGIN_PAGE)
-    }
-  }, []);
-
-
-  const logout = () => {
-    const access_token = localStorage.getItem(ACCESS_TOKEN_KEY);
-    AuthenticationAPI.logout(access_token).then(
-      (response) => {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        
+    const fetchData = async () => {
+      const response = await api.get(API.Authenticaion.GET_INFO)
+      if (response.status == 200) {
+        setUser(response.data)
       }
-    )
-      .catch(
-        (error) => console.log(error)
-      );
-    navigator(LOGIN_PAGE);
-  }
+      else {
+        alert('Something went wrong!')
+      }
+    }
+    fetchData().catch(console.error)
+  }, [])
+
+
+  const handleChooseOption = (opt) => setOption(opt)
+  
 
   return (
     <div>
@@ -85,7 +45,7 @@ export default function AdminPage() {
           <span className="navbar-brand mb-0 h1">
             Welcome {user.fullname}
           </span>
-          <button onClick={logout} className="btn btn-danger" type="button">Logout</button>
+          <button onClick={logoutUser} className="btn btn-danger" type="button">Logout</button>
           {/* onClick={logout} */}
         </div>
       </nav>
@@ -95,7 +55,7 @@ export default function AdminPage() {
         <div className="row mt-5">
 
           <div className="col-md-2">
-            <h2 className="text-center mb-4">Dashboard</h2>
+            <h1 className="text-center mb-4">Dashboard</h1>
 
             <hr />
 
