@@ -28,8 +28,8 @@ batch_size = 4
 epochs = 100
 lr = 1e-4
 test = False
-n_negatives = 24
-num_label_negative = 16
+n_negatives = 16
+num_label_negative = 12
 weight_decay = 0.00001
 min_lr = 1e-5
 
