@@ -27,19 +27,27 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 batch_size = 4
 epochs = 100
 lr = 1e-4
-test = False
+test = True
 n_negatives = 16
 num_label_negative = 12
 weight_decay = 0.00001
 min_lr = 1e-5
 
+test_negatives = 100
+test_negatives_class = 100
+val_batch_size = 16
+
 # continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_L2_latest.pth"
 continue_checkpoint = r""
 
 if test:
+    val_batch_size = 4
     n_negatives = 4
     batch_size = 4
     train_size = 40
+    test_negatives = 16
+    test_negatives_class = 12
+
 
 # Load the pre-trained model
 if not continue_checkpoint:
@@ -58,11 +66,27 @@ last_mamba_layer = model.levels[-1]
 for param in last_mamba_layer.parameters():
     param.requires_grad = True
 
-last_mamba_layer = model.levels[-2]
+# last_mamba_layer = model.levels[-2]
 
-for param in last_mamba_layer.parameters():
-    param.requires_grad = True
+# for param in last_mamba_layer.parameters():
+#     param.requires_grad = True
 
+
+def count_parameters(layer):
+    return sum(p.numel() for p in layer.parameters())
+
+
+# Count parameters in the whole model
+total_params = count_parameters(model)
+print(f"Total number of parameters in the model: {total_params}")
+
+# Count parameters in level 2
+level_2_params = count_parameters(model.levels[-2])
+print(f"Number of parameters in level 2: {level_2_params}")
+
+# Count parameters in level 1
+level_1_params = count_parameters(model.levels[-1])
+print(f"Number of parameters in level 1: {level_1_params}")
 
 train_image_folder = r"raw/train"
 test_image_folder = (
@@ -74,15 +98,15 @@ test_image_paths, test_labels = load_images_from_folders(test_image_folder)
 if test:
     image_paths = image_paths[:train_size]
     labels = labels[:train_size]
-    # test_image_paths = test_image_paths[:train_size]
-    # test_labels = test_labels[:train_size]
+    test_image_paths = test_image_paths[:train_size]
+    test_labels = test_labels[:train_size]
 
 test_set = TripletDataset(
     test_image_paths,
     test_labels,
     transform=transform,
-    n_negatives=100,
-    num_classes_for_negative=100,
+    n_negatives=test_negatives,
+    num_classes_for_negative=test_negatives_class,
 )
 
 train_set = TripletDataset(
@@ -117,7 +141,7 @@ train_loader = DataLoader(
 )
 val_loader = DataLoader(
     val_dataset,
-    batch_size=16,
+    batch_size=val_batch_size,
     shuffle=True,
     collate_fn=triplet_collate_fn,
     num_workers=4,
@@ -126,7 +150,7 @@ val_loader = DataLoader(
 )
 test_loader = DataLoader(
     test_set,
-    batch_size=8,
+    batch_size=1,
     shuffle=False,
     collate_fn=triplet_collate_fn,
     num_workers=4,

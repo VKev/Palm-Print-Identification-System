@@ -15,7 +15,7 @@ bn_eps: null
 bn_momentum: null
 channels_last: true
 checkpoint_hist: 1
-class_map: ''
+class_map: ""
 clip_grad: 5.0
 clip_mode: norm
 color_jitter: 0.4
@@ -25,12 +25,12 @@ cutmix: 1.0
 cutmix_minmax: null
 data_dir: /datasets/imagenet_lmdb
 data_len: 1281167
-dataset: ''
+dataset: ""
 dataset_download: false
 decay_epochs: 100
 decay_milestones:
-- 30
-- 60
+  - 30
+  - 60
 decay_rate: 0.1
 dist_bn: reduce
 drop_block: null
@@ -40,21 +40,21 @@ drop_rate: 0.0
 epoch_repeats: 0.0
 epochs: 310
 eval_metric: top1
-experiment: ''
-fuser: ''
+experiment: ""
+fuser: ""
 gp: null
 grad_checkpointing: false
 hflip: 0.5
 img_size: null
-initial_checkpoint: ''
+initial_checkpoint: ""
 input_size:
-- 3
-- 224
-- 224
-interpolation: ''
+  - 3
+  - 224
+  - 224
+interpolation: ""
 jsd_loss: false
 layer_decay: null
-loadcheckpoint: ''
+loadcheckpoint: ""
 local_rank: 0
 log_dir: ./log_dir/
 log_interval: 50
@@ -91,26 +91,26 @@ no_saver: false
 num_classes: null
 opt: lamb
 opt_betas:
-- 0.9
-- 0.999
+  - 0.9
+  - 0.999
 opt_eps: 1.0e-08
-output: ''
+output: ""
 patience_epochs: 10
 pin_mem: false
 pretrained: false
 ratio:
-- 0.75
-- 1.3333333333333333
+  - 0.75
+  - 1.3333333333333333
 recount: 1
 recovery_interval: 0
 remode: pixel
 reprob: 0.25
 resplit: false
-resume: ''
+resume: ""
 save_images: false
 scale:
-- 0.08
-- 1.0
+  - 0.08
+  - 1.0
 sched: cosine
 seed: 31
 smoothing: 0.1

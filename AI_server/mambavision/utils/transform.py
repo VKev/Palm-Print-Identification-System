@@ -1,3 +1,4 @@
+import random
 from torchvision import transforms
 import os
 from PIL import Image
@@ -44,27 +45,30 @@ transform = transforms.Compose(
 augmentation = transforms.Compose(
     [
         transforms.Resize((224, 224)),
-        transforms.RandomRotation(20),
+        transforms.RandomRotation(40),
         transforms.RandomApply(
             [
                 transforms.ColorJitter(
-                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2
+                    brightness=random.uniform(0.1, 0.2),
+                    contrast=random.uniform(0.1, 0.3),
+                    saturation=random.uniform(0.1, 0.3),
+                    hue=random.uniform(0.1, 0.3),
                 )
             ],
             p=0.5,
         ),
-        transforms.RandomApply([transforms.RandomHorizontalFlip()], p=0.5),
+        transforms.RandomHorizontalFlip(),
         transforms.RandomApply(
             [transforms.RandomResizedCrop(size=224, scale=(0.8, 1.0))], p=0.5
         ),
         transforms.RandomApply(
-            [transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.4
+            [transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.3
         ),
         transforms.RandomApply(
             [transforms.RandomAffine(degrees=0, translate=(0.1, 0.1))], p=0.7
         ),
         transforms.ToTensor(),
-        # transforms.Normalize(mean=[0.4440], std=[0.2104]),
+        transforms.Normalize(mean=[0.4440], std=[0.2104]),
     ]
 )
 
