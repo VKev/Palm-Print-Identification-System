@@ -210,6 +210,8 @@ def evaluate(model, data_loader, device):
 
 if __name__ == "__main__":
     try:
+        test_loss = evaluate(model, test_loader, device)
+        print(f"Test Loss: {test_loss}")
         for epoch in range(epochs):
             model.train()
             running_loss = 0.0
@@ -278,7 +280,7 @@ if __name__ == "__main__":
             )
             torch.save(
                 model.state_dict(),
-                f"checkpoints/fine_tuned_mamba_vision_L2_latest.pth",
+                f"checkpoints/fine_tuned_mamba_vision_L2_latest_{epoch+1}.pth",
             )
             torch.cuda.empty_cache()
     finally:
