@@ -100,7 +100,7 @@ class TripletDataset(Dataset):
                 negative_image = Image.open(self.image_paths[neg_idx]).convert("RGB")
 
                 # Apply augmentations or transformations
-                if self.augmentation and random.random() < 0.5:
+                if self.augmentation and random.random() < 0.7:
                     negative_image = self.augmentation(negative_image)
                 else:
                     negative_image = self.transform(negative_image)
