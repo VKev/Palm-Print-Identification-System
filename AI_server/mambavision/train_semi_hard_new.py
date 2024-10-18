@@ -4,8 +4,9 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from PIL import Image
-from models import mamba_vision_L2
+from models import mamba_vision_T
 from torch.nn.functional import normalize
+from timm.models import create_model
 import random
 import torch.nn.functional as F
 import os
@@ -24,48 +25,87 @@ from utils import (
 
 pc_info()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 4
-epochs = 100
-lr = 1e-4
+batch_size = 16
+epochs = 1000
+lr = 5e-4
 test = True
-n_negatives = 16
-num_label_negative = 12
-weight_decay = 0.00001
+n_negatives = 32
+num_label_negative = 24
+weight_decay = 0.05
 min_lr = 1e-5
 
 test_negatives = 100
 test_negatives_class = 100
 val_batch_size = 16
-
-# continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_L2_latest.pth"
+test_batch = 12
+# continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_T_latest.pth"
 continue_checkpoint = r""
 
 if test:
     val_batch_size = 4
     n_negatives = 4
+    test_batch = 1
     batch_size = 4
-    train_size = 40
+    train_size = 200
     test_negatives = 16
-    test_negatives_class = 12
+    test_negatives_class = 8
 
 
 # Load the pre-trained model
 if not continue_checkpoint:
-    model = mamba_vision_L2(pretrained=True).to(device)
+    print("Initializing")
+    model = create_model(
+        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0.2
+    ).to(device)
+    model.head = nn.Sequential(
+        model.head,  # Original head layer that outputs 1000 features
+        nn.ReLU(),  # Add an activation function (optional, e.g., ReLU)
+        nn.Linear(
+            in_features=1000, out_features=256, bias=True
+        ),  # Bottleneck layer reducing to 256
+    )
 else:
-    model = mamba_vision_L2(pretrained=False).to(
-        device
+    print("Loading")
+    model = create_model(
+        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0.2
+    ).to(device)
+    model.head = nn.Sequential(
+        model.head,  # Original head layer that outputs 1000 features
+        nn.ReLU(),  # Add an activation function (optional, e.g., ReLU)
+        nn.Linear(
+            in_features=1000, out_features=256, bias=True
+        ),  # Bottleneck layer reducing to 256
     )  # Initialize the model without pretrained weights
     model.load_state_dict(torch.load(continue_checkpoint))
-# Freeze all layers except the last few
+    # Freeze all layers except the last few
+
 for param in model.parameters():
     param.requires_grad = False
 
 last_mamba_layer = model.levels[-1]
 
-for param in last_mamba_layer.parameters():
-    param.requires_grad = True
+# for param in last_mamba_layer.parameters():
+#     param.requires_grad = True
+# print(model)
+total_params = 0
+for name, param in last_mamba_layer.named_parameters():
+    if "blocks.3" in name:
+        param.requires_grad = True
+        total_params += param.numel()
+        # print(f"Set requires_grad=True for {name}")
 
+for name, param in model.named_parameters():
+    if "head" in name:  # If the layer is in the head
+        param.requires_grad = True
+    if name in ["norm.weight", "norm.bias"]:
+        param.requires_grad = True
+
+for name, param in model.named_parameters():
+    if param.requires_grad:
+        print(f"Module Name: {name}, Requires Grad: {param.requires_grad}")
+
+
+print(f"Total param in block 3: {total_params}")
 # last_mamba_layer = model.levels[-2]
 
 # for param in last_mamba_layer.parameters():
@@ -87,6 +127,7 @@ print(f"Number of parameters in level 2: {level_2_params}")
 # Count parameters in level 1
 level_1_params = count_parameters(model.levels[-1])
 print(f"Number of parameters in level 1: {level_1_params}")
+print(model)
 
 train_image_folder = r"raw/train"
 test_image_folder = (
@@ -150,7 +191,7 @@ val_loader = DataLoader(
 )
 test_loader = DataLoader(
     test_set,
-    batch_size=1,
+    batch_size=test_batch,
     shuffle=False,
     collate_fn=triplet_collate_fn,
     num_workers=4,
@@ -168,9 +209,7 @@ optimizer = optim.AdamW(
     betas=(0.9, 0.999),
     eps=1e-8,
 )
-scheduler = CosineAnnealingWarmRestarts(
-    optimizer, eta_min=min_lr, T_0=20 // batch_size, T_mult=1
-)
+scheduler = CosineAnnealingWarmRestarts(optimizer, eta_min=min_lr, T_0=1, T_mult=1)
 
 
 def evaluate(model, data_loader, device):
@@ -278,14 +317,14 @@ if __name__ == "__main__":
             print(
                 f"Epoch [{epoch+1}/{epochs}]: Training Loss: {train_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}"
             )
-            torch.save(
-                model.state_dict(),
-                f"checkpoints/fine_tuned_mamba_vision_L2_latest_{epoch+1}.pth",
-            )
+            # torch.save(
+            #     model.state_dict(),
+            #     f"checkpoints/fine_tuned_mamba_vision_T_latest_{epoch+1}.pth",
+            # )
             torch.cuda.empty_cache()
     finally:
         print("Saving checkpoints, don't close!")
         torch.save(
             model.state_dict(),
-            f"checkpoints/fine_tuned_mamba_vision_L2_latest.pth",
+            f"checkpoints/fine_tuned_mamba_vision_T_latest.pth",
         )

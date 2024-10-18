@@ -1,7 +1,7 @@
 torch>=2.4.0
 causal-conv1d
 mamba-ssm
-timm
+timm==1.0.9
 tensorboardX
 einops
 transformers

@@ -2,14 +2,17 @@ import torch
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
-from models import mamba_vision_L2
+from models import mamba_vision_T
 from scipy.spatial.distance import cosine
 
 # Load the model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = mamba_vision_L2()  # Initialize the model without pretrained weights
+# model = mamba_vision_T(
+#     pretrained=True
+# )  # Initialize the model without pretrained weights
+model = mamba_vision_T()
 model.load_state_dict(
-    torch.load(r"checkpoints/fine_tuned_mamba_vision_L2_latest.pth")
+    torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_7.pth")
 )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
@@ -82,11 +85,11 @@ def l2_normalize(embeddings):
 
 
 # Example usage
-image_paths = get_image_paths(r"raw/1")
+image_paths = get_image_paths(r"raw/dataset-test/register-half")
 # Run inference and compute similarity scores
 outputs = run_inference(image_paths)
 outputs = l2_normalize(outputs)
-strange_paths = get_image_paths(r"raw/2")
+strange_paths = get_image_paths(r"raw/dataset-test/query-half")
 
 strange_outputs = run_inference(strange_paths)
 strange_outputs = l2_normalize(strange_outputs)
