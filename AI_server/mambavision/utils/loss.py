@@ -37,10 +37,10 @@ class BatchAllTripletLoss(nn.Module):
         # print("Neg dist")
         # print(neg_dist)
 
-        semi_hard_mask = (neg_dist > pos_dist) & (neg_dist < pos_dist + self.margin)
+        # semi_hard_mask = (neg_dist > pos_dist) & (neg_dist < pos_dist + self.margin)
 
-        hard_mask = neg_dist <= pos_dist
-        valid_mask = semi_hard_mask | hard_mask
+        # hard_mask = neg_dist <= pos_dist
+        # valid_mask = semi_hard_mask | hard_mask
         # print("Semi hard mask")
         # print(semi_hard_mask)
         # print("Hard mask")
@@ -54,17 +54,20 @@ class BatchAllTripletLoss(nn.Module):
 
         # print(f"loss: pos_dis - neg_dis + margin({self.margin})")
         # print(triplet_loss)
+
         # Apply the valid triplet mask
-        valid_triplet_loss = triplet_loss[valid_mask]
+        # valid_triplet_loss = triplet_loss[valid_mask]
+
         # print(f"valid loss")
         # print(valid_triplet_loss)
 
         # If no valid triplets, return zero loss with gradient
-        if valid_triplet_loss.numel() == 0:
+        if triplet_loss.numel() == 0:
             return torch.tensor(0.0, device=anchors.device, requires_grad=True)
 
         # Return mean of valid triplet losses
-        return valid_triplet_loss.mean()
+        return triplet_loss.mean()
+
         # batch_size = anchors.size(0)
         # num_negatives = len(negatives_list)
         # # Stack negatives along a new dimension for easier broadcasting

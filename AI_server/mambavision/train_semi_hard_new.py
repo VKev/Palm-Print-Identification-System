@@ -25,12 +25,12 @@ from utils import (
 
 pc_info()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 16
+batch_size = 20
 epochs = 1000
 lr = 5e-4
-test = True
-n_negatives = 32
-num_label_negative = 24
+test = False
+n_negatives = 140
+num_label_negative = 96
 weight_decay = 0.05
 min_lr = 1e-5
 
@@ -38,8 +38,8 @@ test_negatives = 100
 test_negatives_class = 100
 val_batch_size = 16
 test_batch = 12
-# continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_T_latest.pth"
-continue_checkpoint = r""
+continue_checkpoint = r"checkpoints/best/fine_tuned_mamba_vision_T_latest_19.pth"
+# continue_checkpoint = r""
 
 if test:
     val_batch_size = 4
@@ -87,12 +87,16 @@ last_mamba_layer = model.levels[-1]
 # for param in last_mamba_layer.parameters():
 #     param.requires_grad = True
 # print(model)
-total_params = 0
+total_params_3 = 0
+total_params_2 = 0
 for name, param in last_mamba_layer.named_parameters():
     if "blocks.3" in name:
         param.requires_grad = True
-        total_params += param.numel()
-        # print(f"Set requires_grad=True for {name}")
+        total_params_3 += param.numel()
+    # if "blocks.2" in name:
+    #     param.requires_grad = True
+    #     total_params_2 += param.numel()
+    # print(f"Set requires_grad=True for {name}")
 
 for name, param in model.named_parameters():
     if "head" in name:  # If the layer is in the head
@@ -105,7 +109,8 @@ for name, param in model.named_parameters():
         print(f"Module Name: {name}, Requires Grad: {param.requires_grad}")
 
 
-print(f"Total param in block 3: {total_params}")
+print(f"Total param in block 3: {total_params_3}")
+print(f"Total param in block 2: {total_params_2}")
 # last_mamba_layer = model.levels[-2]
 
 # for param in last_mamba_layer.parameters():
@@ -317,10 +322,10 @@ if __name__ == "__main__":
             print(
                 f"Epoch [{epoch+1}/{epochs}]: Training Loss: {train_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}"
             )
-            # torch.save(
-            #     model.state_dict(),
-            #     f"checkpoints/fine_tuned_mamba_vision_T_latest_{epoch+1}.pth",
-            # )
+            torch.save(
+                model.state_dict(),
+                f"checkpoints/fine_tuned_mamba_vision_T_latest_{epoch+1}.pth",
+            )
             torch.cuda.empty_cache()
     finally:
         print("Saving checkpoints, don't close!")

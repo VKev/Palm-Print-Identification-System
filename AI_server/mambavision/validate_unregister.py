@@ -4,15 +4,23 @@ from torchvision import transforms
 from tqdm import tqdm
 from models import mamba_vision_T
 from scipy.spatial.distance import cosine
+from torch import nn, optim
 
 # Load the model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # model = mamba_vision_T(
 #     pretrained=True
 # )  # Initialize the model without pretrained weights
-model = mamba_vision_T()
+model = mamba_vision_T(pretrained=False)
+model.head = nn.Sequential(
+    model.head,  # Original head layer that outputs 1000 features
+    nn.ReLU(),  # Add an activation function (optional, e.g., ReLU)
+    nn.Linear(
+        in_features=1000, out_features=256, bias=True
+    ),  # Bottleneck layer reducing to 256
+)
 model.load_state_dict(
-    torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_7.pth")
+    torch.load(r"checkpoints/best/fine_tuned_mamba_vision_T_2b_1.pth")
 )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
