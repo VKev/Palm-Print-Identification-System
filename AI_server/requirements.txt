@@ -5,3 +5,4 @@ timm==1.0.9
 tensorboardX
 einops
 transformers
+wandb

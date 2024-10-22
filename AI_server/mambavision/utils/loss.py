@@ -63,10 +63,13 @@ class BatchAllTripletLoss(nn.Module):
 
         # If no valid triplets, return zero loss with gradient
         if triplet_loss.numel() == 0:
-            return torch.tensor(0.0, device=anchors.device, requires_grad=True)
+            return torch.tensor(0.0, device=anchors.device, requires_grad=False)
 
+        mean_loss = triplet_loss.mean()
+        if not mean_loss.requires_grad:
+            mean_loss = mean_loss.requires_grad_()
         # Return mean of valid triplet losses
-        return triplet_loss.mean()
+        return mean_loss
 
         # batch_size = anchors.size(0)
         # num_negatives = len(negatives_list)

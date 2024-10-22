@@ -1,15 +1,17 @@
+import argparse
 import torch
 from torch import nn, optim
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from PIL import Image
-from models import mamba_vision_T
+from models import mamba_vision_T, CustomHead, test_custom_head, init_weights
 from torch.nn.functional import normalize
 from timm.models import create_model
 import random
 import torch.nn.functional as F
 import os
+import wandb
 from tqdm import tqdm
 import re
 from utils import (
@@ -23,94 +25,140 @@ from utils import (
     pc_info,
 )
 
+# test_custom_head()
+
+# pass
+
+wandb.login(key="b8b74d6af92b4dea7706baeae8b86083dad5c941")
 pc_info()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 20
-epochs = 1000
-lr = 5e-4
-test = False
-n_negatives = 140
-num_label_negative = 96
-weight_decay = 0.05
-min_lr = 1e-5
 
-test_negatives = 100
-test_negatives_class = 100
-val_batch_size = 16
-test_batch = 12
-continue_checkpoint = r"checkpoints/best/fine_tuned_mamba_vision_T_latest_19.pth"
-# continue_checkpoint = r""
+parser = argparse.ArgumentParser(description='Training parameters for the model.')
+parser.add_argument('--train_image_folder', type=str, default=r"raw/train", help='Path to the training images folder')
+parser.add_argument('--test_image_folder', type=str, default=r"raw/dataset-test/Sapienza-University-Mobile-Palmprint-Database-ROI-by-our", help='Path to the test images folder')
+parser.add_argument('--batch_size', type=int, default=24, help='Batch size for training')
+parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs to train')
+parser.add_argument('--lr', type=float, default=5e-4, help='Learning rate')
+parser.add_argument('--test', type=bool, default=False, help='Whether to run in test mode')
+parser.add_argument('--n_negatives', type=int, default=140, help='Number of negatives for training')
+parser.add_argument('--num_label_negative', type=int, default=96, help='Number of negative labels')
+parser.add_argument('--weight_decay', type=float, default=0.05, help='Weight decay for optimization')
+parser.add_argument('--min_lr', type=float, default=1e-5, help='Minimum learning rate')
+parser.add_argument('--num_workers', type=int, default=1, help='Number of workers for data loading')
+parser.add_argument('--test_negatives', type=int, default=100, help='Number of test negatives')
+parser.add_argument('--test_negatives_class', type=int, default=100, help='Number of test negatives per class')
+parser.add_argument('--val_batch_size', type=int, default=24, help='Batch size for validation')
+parser.add_argument('--test_batch', type=int, default=32, help='Batch size for testing')
+args = parser.parse_args()
+
+train_image_folder = args.train_image_folder
+test_image_folder = args.test_image_folder
+batch_size = args.batch_size
+epochs = args.epochs
+lr = args.lr
+test = args.test
+n_negatives = args.n_negatives
+num_label_negative = args.num_label_negative
+weight_decay = args.weight_decay
+min_lr = args.min_lr
+num_workers = args.num_workers
+test_negatives = args.test_negatives
+test_negatives_class = args.test_negatives_class
+val_batch_size = args.val_batch_size
+test_batch = args.test_batch
+
+# continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_T_latest_19.pth"
+continue_checkpoint = r""
+wandb.init(
+    # set the wandb project where this run will be logged
+    project="mamba-vision-palm-print",
+    # track hyperparameters and run metadata
+    config={
+        "learning_rate": lr,
+        "epochs": epochs,
+    },
+)
 
 if test:
     val_batch_size = 4
-    n_negatives = 4
-    test_batch = 1
+    test_batch = 4
     batch_size = 4
-    train_size = 200
+
+    n_negatives = 16
+    num_label_negative = 12
+
+    train_size = 1000
+
     test_negatives = 16
-    test_negatives_class = 8
+    test_negatives_class = 12
 
 
 # Load the pre-trained model
 if not continue_checkpoint:
     print("Initializing")
     model = create_model(
-        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0.2
+        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0
     ).to(device)
-    model.head = nn.Sequential(
-        model.head,  # Original head layer that outputs 1000 features
-        nn.ReLU(),  # Add an activation function (optional, e.g., ReLU)
-        nn.Linear(
-            in_features=1000, out_features=256, bias=True
-        ),  # Bottleneck layer reducing to 256
-    )
 else:
     print("Loading")
     model = create_model(
-        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0.2
+        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0
     ).to(device)
-    model.head = nn.Sequential(
-        model.head,  # Original head layer that outputs 1000 features
-        nn.ReLU(),  # Add an activation function (optional, e.g., ReLU)
-        nn.Linear(
-            in_features=1000, out_features=256, bias=True
-        ),  # Bottleneck layer reducing to 256
-    )  # Initialize the model without pretrained weights
     model.load_state_dict(torch.load(continue_checkpoint))
     # Freeze all layers except the last few
 
+
+in_features = model.head.in_features if hasattr(model.head, "in_features") else 640
+
+# Create and replace the head
+model.head = CustomHead(
+    in_features=640, num_kernels=24, base_kernel_size=4, kernel_increment=4, num_heads=8
+).to(device)
+
+# If you need to reset/initialize the new head's parameters
+# def init_weights(m):
+#     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv1d):
+#         torch.nn.init.xavier_uniform_(m.weight)
+#         if m.bias is not None:
+#             torch.nn.init.zeros_(m.bias)
+
+
+model.head.apply(init_weights)
+
+# for param in model.parameters():
+#     param.requires_grad = False
 for param in model.parameters():
     param.requires_grad = False
 
 last_mamba_layer = model.levels[-1]
-
+for param in model.head.parameters():
+    param.requires_grad = True
+# model.head[2].requires_grad_(True)
 # for param in last_mamba_layer.parameters():
 #     param.requires_grad = True
 # print(model)
-total_params_3 = 0
-total_params_2 = 0
-for name, param in last_mamba_layer.named_parameters():
-    if "blocks.3" in name:
-        param.requires_grad = True
-        total_params_3 += param.numel()
-    # if "blocks.2" in name:
-    #     param.requires_grad = True
-    #     total_params_2 += param.numel()
-    # print(f"Set requires_grad=True for {name}")
+# total_params_3 = 0
+# total_params_2 = 0
+# for name, param in last_mamba_layer.named_parameters():
+#     if "blocks.3" in name:
+#         param.requires_grad = True
+#         total_params_3 += param.numel()
+# if "blocks.2" in name:
+#     param.requires_grad = True
+#     total_params_2 += param.numel()
+# print(f"Set requires_grad=True for {name}")
 
-for name, param in model.named_parameters():
-    if "head" in name:  # If the layer is in the head
-        param.requires_grad = True
-    if name in ["norm.weight", "norm.bias"]:
-        param.requires_grad = True
+# for name, param in model.named_parameters():
+#     if "head" in name:  # If the layer is in the head
+#         param.requires_grad = True
 
 for name, param in model.named_parameters():
     if param.requires_grad:
         print(f"Module Name: {name}, Requires Grad: {param.requires_grad}")
 
 
-print(f"Total param in block 3: {total_params_3}")
-print(f"Total param in block 2: {total_params_2}")
+# print(f"Total param in block 3: {total_params_3}")
+# print(f"Total param in block 2: {total_params_2}")
 # last_mamba_layer = model.levels[-2]
 
 # for param in last_mamba_layer.parameters():
@@ -134,10 +182,7 @@ level_1_params = count_parameters(model.levels[-1])
 print(f"Number of parameters in level 1: {level_1_params}")
 print(model)
 
-train_image_folder = r"raw/train"
-test_image_folder = (
-    r"raw/dataset-test/Sapienza-University-Mobile-Palmprint-Database-ROI-by-our"
-)
+
 image_paths, labels = load_images_from_folders(train_image_folder)
 test_image_paths, test_labels = load_images_from_folders(test_image_folder)
 
@@ -181,7 +226,7 @@ train_loader = DataLoader(
     batch_size=batch_size,
     shuffle=True,
     collate_fn=triplet_collate_fn,
-    num_workers=4,
+    num_workers=num_workers,
     persistent_workers=True,
     pin_memory=True,
 )
@@ -190,7 +235,7 @@ val_loader = DataLoader(
     batch_size=val_batch_size,
     shuffle=True,
     collate_fn=triplet_collate_fn,
-    num_workers=4,
+    num_workers=num_workers,
     persistent_workers=True,
     pin_memory=True,
 )
@@ -199,7 +244,7 @@ test_loader = DataLoader(
     batch_size=test_batch,
     shuffle=False,
     collate_fn=triplet_collate_fn,
-    num_workers=4,
+    num_workers=num_workers,
     persistent_workers=True,
     pin_memory=True,
 )
@@ -228,7 +273,7 @@ def evaluate(model, data_loader, device):
         ):
             all_images = all_images.to(device)
 
-            all_features = model.forward_features(all_images)
+            all_features = model.forward(all_images)
 
             anchors_features = all_features[:num_anchors]
             positives_features = all_features[num_anchors : 2 * num_anchors]
@@ -243,7 +288,6 @@ def evaluate(model, data_loader, device):
             loss = triplet_loss(
                 anchors_features, positives_features, negatives_features
             )
-
             if loss.item() > 0:
                 total_loss += loss.item()
             total_batches += 1
@@ -254,6 +298,7 @@ def evaluate(model, data_loader, device):
 
 if __name__ == "__main__":
     try:
+        # val_loss = evaluate(model, val_loader, device)
         test_loss = evaluate(model, test_loader, device)
         print(f"Test Loss: {test_loss}")
         for epoch in range(epochs):
@@ -272,7 +317,7 @@ if __name__ == "__main__":
                 # print("TEST")
                 all_images = all_images.to(device)
 
-                all_features = model.forward_features(all_images)
+                all_features = model.forward(all_images)
 
                 anchors_features = all_features[:num_anchors]
                 positives_features = all_features[num_anchors : 2 * num_anchors]
@@ -290,6 +335,7 @@ if __name__ == "__main__":
                 loss = triplet_loss(
                     anchors_features, positives_features, negatives_features
                 )
+                wandb.log({"batch_loss": loss})
 
                 if loss.item() > 0:
                     loss.backward()
@@ -319,13 +365,20 @@ if __name__ == "__main__":
                 f.write(f"Training Loss: {train_loss}, ")
                 f.write(f"Validation Loss: {val_loss}, ")
                 f.write(f"Test Loss: {test_loss}\n")
+            wandb.log(
+                {
+                    "training_loss": train_loss,
+                    "val_loss": val_loss,
+                    "test_loss": test_loss,
+                }
+            )
             print(
                 f"Epoch [{epoch+1}/{epochs}]: Training Loss: {train_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}"
             )
-            torch.save(
-                model.state_dict(),
-                f"checkpoints/fine_tuned_mamba_vision_T_latest_{epoch+1}.pth",
-            )
+            # torch.save(
+            #     model.state_dict(),
+            #     f"checkpoints/fine_tuned_mamba_vision_T_latest_{epoch+1}.pth",
+            # )
             torch.cuda.empty_cache()
     finally:
         print("Saving checkpoints, don't close!")

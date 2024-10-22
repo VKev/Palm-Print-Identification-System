@@ -56,7 +56,7 @@ def run_inference(image_paths, batch_size=64):
         input_tensor = preprocess_images(batch_paths)
 
         with torch.no_grad():
-            batch_outputs = model.forward_features(input_tensor)
+            batch_outputs = model.forward(input_tensor)
 
         all_outputs.append(batch_outputs)
 
