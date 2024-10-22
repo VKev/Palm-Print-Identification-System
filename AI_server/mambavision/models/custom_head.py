@@ -30,11 +30,13 @@ class CustomHead(nn.Module):
         kernel_increment=4,
         num_heads=8,
         norm_layer=nn.LayerNorm,
+        drop_out= 0.2
     ):
         super().__init__()
         self.num_kernels = num_kernels
         self.in_features = in_features
         self.norm1 = nn.LayerNorm(in_features)
+        self.norm2 = norm_layer(in_features)
         # Create convolution layers dynamically
         self.conv_layers = nn.ModuleList()
         for i in range(num_kernels):
@@ -62,6 +64,13 @@ class CustomHead(nn.Module):
             proj_drop=0,
             norm_layer=norm_layer,
         )
+        mlp_hidden_dim = int(in_features * 4)
+        self.mlp = nn.Sequential(
+            nn.Linear(in_features, mlp_hidden_dim),
+            nn.GELU(),
+            nn.Dropout(drop_out),
+            nn.Linear(mlp_hidden_dim, in_features),
+        )
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -79,8 +88,13 @@ class CustomHead(nn.Module):
         # conv_output = torch.cat(conv_outputs, dim=1)
 
         # Stack the attended outputs to get back the original 24 feature vectors
-        attended_output = self.attention(self.norm1(stacked_outputs))
-        pooled_output = torch.mean(attended_output, dim=1)
+        identity = stacked_outputs
+        x = identity + self.attention(self.norm1(stacked_outputs))
+        # Apply MLP with residual connection and normalization
+        x = x + self.mlp(self.norm2(x))
+        
+        # Pool the output
+        pooled_output = torch.mean(x, dim=1)
         # attended_output = torch.stack(attended_output, dim=1)
         return pooled_output
 
