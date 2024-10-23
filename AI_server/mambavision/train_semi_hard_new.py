@@ -1,11 +1,12 @@
 import argparse
 import torch
+import numpy as np
 from torch import nn, optim
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from PIL import Image
-from models import mamba_vision_T, CustomHead, test_custom_head, init_weights
+from models import mamba_vision_T, CustomHead, init_weights
 from torch.nn.functional import normalize
 from timm.models import create_model
 import random
@@ -96,14 +97,10 @@ if test:
 # Load the pre-trained model
 if not continue_checkpoint:
     print("Initializing")
-    model = create_model(
-        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0
-    ).to(device)
+    model = mamba_vision_T(pretrained=True).to(device)
 else:
     print("Loading")
-    model = create_model(
-        "mamba_vision_T", pretrained=True, drop_rate=0.3, attn_drop_rate=0
-    ).to(device)
+    model =  mamba_vision_T(pretrained=False).to(device)
     model.load_state_dict(torch.load(continue_checkpoint))
     # Freeze all layers except the last few
 
@@ -111,9 +108,7 @@ else:
 in_features = model.head.in_features if hasattr(model.head, "in_features") else 640
 
 # Create and replace the head
-model.head = CustomHead(
-    in_features=640, num_kernels=24, base_kernel_size=4, kernel_increment=4, num_heads=8
-).to(device)
+model.head = CustomHead().to(device)
 
 # If you need to reset/initialize the new head's parameters
 # def init_weights(m):
@@ -180,6 +175,11 @@ print(f"Number of parameters in level 2: {level_2_params}")
 # Count parameters in level 1
 level_1_params = count_parameters(model.levels[-1])
 print(f"Number of parameters in level 1: {level_1_params}")
+
+head_params = count_parameters(model.head)
+print(f"Number of parameters in head : {head_params}")
+
+
 print(model)
 
 
@@ -339,8 +339,14 @@ if __name__ == "__main__":
 
                 if loss.item() > 0:
                     loss.backward()
+                    for name, param in model.named_parameters():
+                        if param.grad is not None:
+                            grad_data = param.grad.cpu().data.numpy()
+                            hist, bin_edges = np.histogram(grad_data, bins=100)
+                            wandb.log({
+                                f"gradients/{name}": wandb.Histogram(np_histogram=(hist, bin_edges))
+                            })
                     optimizer.step()
-
                     running_loss += loss.item()
                 total_batches += 1
                 epoch_iterator.set_postfix(

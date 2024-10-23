@@ -780,9 +780,10 @@ class MambaVision(nn.Module):
         x = self.patch_embed(x)
         for level in self.levels:
             x = level(x)
+
         x = self.norm(x)
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
+        # x = self.avgpool(x)
+        # x = torch.flatten(x, 1)
         return x
 
     def forward(self, x):
