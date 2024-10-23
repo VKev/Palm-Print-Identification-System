@@ -381,10 +381,10 @@ if __name__ == "__main__":
             print(
                 f"Epoch [{epoch+1}/{epochs}]: Training Loss: {train_loss}, Validation Loss: {val_loss}, Test Loss: {test_loss}"
             )
-            # torch.save(
-            #     model.state_dict(),
-            #     f"checkpoints/fine_tuned_mamba_vision_T_latest_{epoch+1}.pth",
-            # )
+            torch.save(
+                model.state_dict(),
+                f"checkpoints/fine_tuned_mamba_vision_T_latest_{epoch+1}.pth",
+            )
             torch.cuda.empty_cache()
     finally:
         print("Saving checkpoints, don't close!")
