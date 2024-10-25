@@ -2,6 +2,7 @@ import torch
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
+from models import CustomHead
 from models import mamba_vision_T
 from scipy.spatial.distance import cosine
 from torch import nn, optim
@@ -12,15 +13,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #     pretrained=True
 # )  # Initialize the model without pretrained weights
 model = mamba_vision_T(pretrained=False)
-model.head = nn.Sequential(
-    model.head,  # Original head layer that outputs 1000 features
-    nn.ReLU(),  # Add an activation function (optional, e.g., ReLU)
-    nn.Linear(
-        in_features=1000, out_features=256, bias=True
-    ),  # Bottleneck layer reducing to 256
-)
+model.head = CustomHead()
 model.load_state_dict(
-    torch.load(r"checkpoints/best/fine_tuned_mamba_vision_T_2b_1.pth")
+    torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_11.pth")
 )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
@@ -45,7 +40,7 @@ def preprocess_images(image_paths):
     return torch.stack(images).to(device)
 
 
-def run_inference(image_paths, batch_size=64):
+def run_inference(image_paths, batch_size=128):
     all_outputs = []
 
     total_batches = (len(image_paths) + batch_size - 1) // batch_size
@@ -93,11 +88,11 @@ def l2_normalize(embeddings):
 
 
 # Example usage
-image_paths = get_image_paths(r"raw/dataset-test/register-half")
+image_paths = get_image_paths(r"raw/1")
 # Run inference and compute similarity scores
 outputs = run_inference(image_paths)
 outputs = l2_normalize(outputs)
-strange_paths = get_image_paths(r"raw/dataset-test/query-half")
+strange_paths = get_image_paths(r"raw/2")
 
 strange_outputs = run_inference(strange_paths)
 strange_outputs = l2_normalize(strange_outputs)

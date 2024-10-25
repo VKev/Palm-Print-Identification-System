@@ -6,7 +6,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from PIL import Image
-from models import mamba_vision_T, CustomHead, init_weights
+from models import mamba_vision_T, CustomHead
 from torch.nn.functional import normalize
 from timm.models import create_model
 import random
@@ -118,8 +118,7 @@ model.head = CustomHead().to(device)
 #             torch.nn.init.zeros_(m.bias)
 
 
-model.head.apply(init_weights)
-
+# model.head.apply(init_weights)
 # for param in model.parameters():
 #     param.requires_grad = False
 for param in model.parameters():
@@ -128,6 +127,7 @@ for param in model.parameters():
 last_mamba_layer = model.levels[-1]
 for param in model.head.parameters():
     param.requires_grad = True
+model.head.pos_encoding.requires_grad = False
 # model.head[2].requires_grad_(True)
 # for param in last_mamba_layer.parameters():
 #     param.requires_grad = True
