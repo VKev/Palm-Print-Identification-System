@@ -782,8 +782,8 @@ class MambaVision(nn.Module):
             x = level(x)
 
         x = self.norm(x)
-        # x = self.avgpool(x)
-        # x = torch.flatten(x, 1)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
         return x
 
     def forward(self, x):

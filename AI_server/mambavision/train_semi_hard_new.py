@@ -6,7 +6,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from PIL import Image
-from models import mamba_vision_T, CustomHead
+from models import mamba_vision_T, CustomHead, add_lora_to_model
 from torch.nn.functional import normalize
 from timm.models import create_model
 import random
@@ -105,10 +105,10 @@ else:
     # Freeze all layers except the last few
 
 
-in_features = model.head.in_features if hasattr(model.head, "in_features") else 640
+# in_features = model.head.in_features if hasattr(model.head, "in_features") else 640
 
 # Create and replace the head
-model.head = CustomHead().to(device)
+# model.head = CustomHead().to(device)
 
 # If you need to reset/initialize the new head's parameters
 # def init_weights(m):
@@ -124,10 +124,13 @@ model.head = CustomHead().to(device)
 for param in model.parameters():
     param.requires_grad = False
 
+add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv" ])
+model.to(device)
+# "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.3.norm1"
 last_mamba_layer = model.levels[-1]
-for param in model.head.parameters():
-    param.requires_grad = True
-model.head.pos_encoding.requires_grad = False
+# for param in model.head.parameters():
+#     param.requires_grad = True
+# model.head.pos_encoding.requires_grad = False
 # model.head[2].requires_grad_(True)
 # for param in last_mamba_layer.parameters():
 #     param.requires_grad = True
@@ -273,7 +276,7 @@ def evaluate(model, data_loader, device):
         ):
             all_images = all_images.to(device)
 
-            all_features = model.forward(all_images)
+            all_features = model.forward_features(all_images)
 
             anchors_features = all_features[:num_anchors]
             positives_features = all_features[num_anchors : 2 * num_anchors]
@@ -317,7 +320,7 @@ if __name__ == "__main__":
                 # print("TEST")
                 all_images = all_images.to(device)
 
-                all_features = model.forward(all_images)
+                all_features = model.forward_features(all_images)
 
                 anchors_features = all_features[:num_anchors]
                 positives_features = all_features[num_anchors : 2 * num_anchors]
