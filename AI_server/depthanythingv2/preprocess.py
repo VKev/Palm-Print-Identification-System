@@ -100,5 +100,5 @@ def process_images_in_directory(root_directory):
 
 
 # Example usage:
-root_directory = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Real-bg-cut"
+root_directory = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf"
 process_images_in_directory(root_directory)

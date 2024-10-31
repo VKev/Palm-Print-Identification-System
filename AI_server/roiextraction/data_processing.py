@@ -19,6 +19,7 @@ def unnormalize_image(tensor, mean, std):
     return tensor
 
 
+
 def process_images_in_folder(input_folder, output_folder):
     """
     Processes all images in a folder and subfolders that start with 'numberO' (e.g., '002O', '098O', etc.),
@@ -66,8 +67,8 @@ def process_images_in_folder(input_folder, output_folder):
 
 if __name__ == "__main__":
     preprocessed_img = process_images_in_folder(
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\non-bg-cut\Real-raw",
-        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\non-bg-cut\Real-roi",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf-roi-enhance",
+        r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf-roi-enhance",
     )
     # visualize_roi_data_agumentation(preprocessed_img)
 

@@ -6,17 +6,17 @@ from models import CustomHead
 from models import mamba_vision_T
 from scipy.spatial.distance import cosine
 from torch import nn, optim
-
+import torch.nn.functional as F
 # Load the model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# model = mamba_vision_T(
-#     pretrained=True
-# )  # Initialize the model without pretrained weights
-model = mamba_vision_T(pretrained=False)
-model.head = CustomHead()
-model.load_state_dict(
-    torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_11.pth")
-)  # Load the fine-tuned weights
+model = mamba_vision_T(
+    pretrained=True
+)  # Initialize the model without pretrained weights
+# model = mamba_vision_T(pretrained=False)
+# model.head = CustomHead()
+# model.load_state_dict(
+#     torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_11.pth")
+# )  # Load the fine-tuned weights
 model.to(device)
 model.eval()  # Set the model to evaluation mode
 
@@ -88,11 +88,30 @@ def l2_normalize(embeddings):
 
 
 # Example usage
-image_paths = get_image_paths(r"raw/1")
+# image_paths = get_image_paths(r"raw/realistic-test/bg-cut/Register-half")
+# image_paths = get_image_paths(r"raw/realistic-test/bg-cut/Register-unregister-half")
+
+# image_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Rotate-Shilf/SRegister-half")
+image_paths = get_image_paths(r"raw/realistic-test/bg-cut/Rotate-Shilf/SRegister-half")
+# image_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Register-unregister-half")
+# image_paths = get_image_paths(r"raw/dataset-test/SRegister-half")
+# image_paths = get_image_paths(r"raw/dataset-test/DRegister-half")
+# image_paths = get_image_paths(r"raw/dataset-test/register-half")
+
 # Run inference and compute similarity scores
 outputs = run_inference(image_paths)
 outputs = l2_normalize(outputs)
-strange_paths = get_image_paths(r"raw/2")
+
+
+# strange_paths = get_image_paths(r"raw/realistic-test/bg-cut/Query-half")
+# strange_paths = get_image_paths(r"raw/realistic-test/bg-cut/Query-unregister-half")
+
+# strange_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Rotate-Shilf/SQuery-half")
+strange_paths = get_image_paths(r"raw/realistic-test/bg-cut/Rotate-Shilf/SQuery-half")
+# strange_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Query-unregister-half")
+# strange_paths = get_image_paths(r"raw/dataset-test/SQuery-half")
+# strange_paths = get_image_paths(r"raw/dataset-test/DQuery-half")
+# strange_paths = get_image_paths(r"raw/dataset-test/query-half")
 
 strange_outputs = run_inference(strange_paths)
 strange_outputs = l2_normalize(strange_outputs)
@@ -101,6 +120,24 @@ strange_outputs = l2_normalize(strange_outputs)
 def euclidean_distance(tensor1, tensor2):
     return torch.cdist(tensor1.unsqueeze(0), tensor2.unsqueeze(0), p=2).item()
 
+def cosine_sim(tensor1, tensor2):
+    # Normalize the tensors
+    tensor1_normalized = F.normalize(tensor1, p=2, dim=0)
+    tensor2_normalized = F.normalize(tensor2, p=2, dim=0)
+    
+    # Compute cosine similarity
+    cos_sim = F.cosine_similarity(tensor1_normalized.unsqueeze(0), 
+                                tensor2_normalized.unsqueeze(0), 
+                                dim=1)
+    
+    # Convert similarity to distance (1 - cos_sim)
+    # This ensures that:
+    # - identical vectors have distance 0 (cos_sim = 1 → distance = 0)
+    # - orthogonal vectors have distance 1 (cos_sim = 0 → distance = 1)
+    # - opposite vectors have distance 2 (cos_sim = -1 → distance = 2)
+    distance = 1 - cos_sim.item()
+    
+    return distance
 
 def extract_class(image_path):
     # Get the filename without path
@@ -194,22 +231,56 @@ def calculate_occur_ratio(min_distance, value):
 
 
 voting_score = 0
+total_avg = 0
+total_metric = 0
+total_occurence = 0
+
+avg_values = []
+occurence_values = []
+metric_values = []
 for key, value in count_dict.items():
     print(f"class {key}: ")
-
     print(f"Value {value}")
     max_occur = get_max_first_value_elements(value)
     min_distance = get_min_value_per_count_ratio(max_occur)
     print(f"Result {min_distance}")
     avarage = min_distance[1][1] / min_distance[1][0]
+    total_avg += avarage
+    avg_values.append(avarage)  # Store individual average
     print(f"Average {avarage}")
     occur_ratio = calculate_occur_ratio(min_distance, value)
+    total_occurence += occur_ratio
+    occurence_values.append(occur_ratio)  # Store individual occurrence ratio
     print(f"Occurrence Ratio: {occur_ratio}")
-    metric = (((1 - avarage) + occur_ratio) / 2) * 100
-    print(f"test metric: { metric}%")
+    metric = (((1 - avarage) + occur_ratio) / 2)
+    total_metric += metric
+    metric_values.append(metric)  # Store individual metric
+    print(f"test metric: {metric}")
     if key == min_distance[0]:
         voting_score += 1
 
-print((len(count_dict)))
+n = len(count_dict)
+print(f"Number of classes: {n}")
 print(f"Top 1: {score / (len(strange_output_dict))} ")
-print(f"Top voting: {voting_score / (len(count_dict))} ")
+print(f"Top voting: {voting_score / n} ")
+
+# Calculate means
+avg_mean = total_avg / n
+occurence_mean = total_occurence / n
+metric_mean = total_metric / n
+
+# Calculate sample variances
+avg_variance = sum((x - avg_mean) ** 2 for x in avg_values) / (n - 1)
+occurence_variance = sum((x - occurence_mean) ** 2 for x in occurence_values) / (n - 1)
+metric_variance = sum((x - metric_mean) ** 2 for x in metric_values) / (n - 1)
+
+print("\nMeans:")
+print(f"Total average's mean: {avg_mean}")
+print(f"Total occurrence's mean: {occurence_mean}")
+print(f"Total test metric's mean: {metric_mean}")
+
+print("\nVariances:")
+print(f"Total average's variance: {avg_variance}")
+print(f"Total occurrence's variance: {occurence_variance}")
+print(f"Total test metric's variance: {metric_variance}")
+
