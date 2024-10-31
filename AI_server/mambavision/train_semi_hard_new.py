@@ -212,7 +212,7 @@ test_loader = DataLoader(
 )
 
 
-triplet_loss = BatchAllTripletLoss(margin=1)
+triplet_loss = BatchAllTripletLoss(margin=0.75)
 
 optimizer = optim.AdamW(
     filter(lambda p: p.requires_grad, model.parameters()),
