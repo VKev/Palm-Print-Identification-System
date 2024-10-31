@@ -44,7 +44,8 @@ class BatchAllTripletLoss(nn.Module):
 
 
 
-        triplet_loss = pos_dist - neg_dist + self.margin  # (batch_size, num_negatives)
+        # triplet_loss = pos_dist - neg_dist + self.margin  # (batch_size, num_negatives)
+        triplet_loss = self.margin - (pos_dist - neg_dist) 
         triplet_loss = torch.clamp(triplet_loss, min=0.0)  # Ensure non-negative loss
 
         if triplet_loss.numel() == 0:

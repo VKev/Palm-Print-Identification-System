@@ -98,69 +98,28 @@ if test:
 if not continue_checkpoint:
     print("Initializing")
     model = mamba_vision_T(pretrained=True).to(device)
+    for param in model.parameters():
+        param.requires_grad = False
+
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv" ])
+    model.to(device)
 else:
     print("Loading")
     model =  mamba_vision_T(pretrained=False).to(device)
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv" ])
     model.load_state_dict(torch.load(continue_checkpoint))
-    # Freeze all layers except the last few
+    for param in model.parameters():
+        param.requires_grad = False
+    for name, param in model.named_parameters():
+        if "lora_" in name:
+            param.requires_grad = True
+    model.to(device)            
 
-
-# in_features = model.head.in_features if hasattr(model.head, "in_features") else 640
-
-# Create and replace the head
-# model.head = CustomHead().to(device)
-
-# If you need to reset/initialize the new head's parameters
-# def init_weights(m):
-#     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv1d):
-#         torch.nn.init.xavier_uniform_(m.weight)
-#         if m.bias is not None:
-#             torch.nn.init.zeros_(m.bias)
-
-
-# model.head.apply(init_weights)
-# for param in model.parameters():
-#     param.requires_grad = False
-for param in model.parameters():
-    param.requires_grad = False
-
-add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv" ])
-model.to(device)
-# "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.3.norm1"
-last_mamba_layer = model.levels[-1]
-# for param in model.head.parameters():
-#     param.requires_grad = True
-# model.head.pos_encoding.requires_grad = False
-# model.head[2].requires_grad_(True)
-# for param in last_mamba_layer.parameters():
-#     param.requires_grad = True
-# print(model)
-# total_params_3 = 0
-# total_params_2 = 0
-# for name, param in last_mamba_layer.named_parameters():
-#     if "blocks.3" in name:
-#         param.requires_grad = True
-#         total_params_3 += param.numel()
-# if "blocks.2" in name:
-#     param.requires_grad = True
-#     total_params_2 += param.numel()
-# print(f"Set requires_grad=True for {name}")
-
-# for name, param in model.named_parameters():
-#     if "head" in name:  # If the layer is in the head
-#         param.requires_grad = True
 
 for name, param in model.named_parameters():
     if param.requires_grad:
         print(f"Module Name: {name}, Requires Grad: {param.requires_grad}")
 
-
-# print(f"Total param in block 3: {total_params_3}")
-# print(f"Total param in block 2: {total_params_2}")
-# last_mamba_layer = model.levels[-2]
-
-# for param in last_mamba_layer.parameters():
-#     param.requires_grad = True
 
 
 def count_parameters(layer):
