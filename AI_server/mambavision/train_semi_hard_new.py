@@ -36,7 +36,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 parser = argparse.ArgumentParser(description='Training parameters for the model.')
 parser.add_argument('--train_image_folder', type=str, default=r"raw/train", help='Path to the training images folder')
-parser.add_argument('--test_image_folder', type=str, default=r"raw/dataset-test/Sapienza-University-Mobile-Palmprint-Database-ROI-by-our", help='Path to the test images folder')
+parser.add_argument('--test_image_folder', type=str, default=r"raw/dataset-test/Sapienza-University-test-roi-by-our", help='Path to the test images folder')
 parser.add_argument('--batch_size', type=int, default=24, help='Batch size for training')
 parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs to train')
 parser.add_argument('--lr', type=float, default=5e-4, help='Learning rate')
@@ -101,12 +101,12 @@ if not continue_checkpoint:
     for param in model.parameters():
         param.requires_grad = False
 
-    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv" ])
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
     model.to(device)
 else:
     print("Loading")
     model =  mamba_vision_T(pretrained=False).to(device)
-    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv" ])
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
     model.load_state_dict(torch.load(continue_checkpoint))
     for param in model.parameters():
         param.requires_grad = False
@@ -212,7 +212,7 @@ test_loader = DataLoader(
 )
 
 
-triplet_loss = BatchAllTripletLoss(margin=0.75)
+triplet_loss = BatchAllTripletLoss(margin=0.5)
 
 optimizer = optim.AdamW(
     filter(lambda p: p.requires_grad, model.parameters()),

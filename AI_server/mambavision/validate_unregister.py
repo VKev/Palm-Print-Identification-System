@@ -7,16 +7,15 @@ from models import mamba_vision_T
 from scipy.spatial.distance import cosine
 from torch import nn, optim
 import torch.nn.functional as F
+from models import add_lora_to_model
 # Load the model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = mamba_vision_T(
-    pretrained=True
-)  # Initialize the model without pretrained weights
-# model = mamba_vision_T(pretrained=False)
-# model.head = CustomHead()
-# model.load_state_dict(
-#     torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_11.pth")
-# )  # Load the fine-tuned weights
+# model = mamba_vision_T(
+#     pretrained=True
+# )  
+model =  mamba_vision_T(pretrained=False).to(device)
+add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
+model.load_state_dict(torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_12.pth"))
 model.to(device)
 model.eval()  # Set the model to evaluation mode
 

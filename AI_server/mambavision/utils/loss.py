@@ -27,25 +27,26 @@ class BatchAllTripletLoss(nn.Module):
         )
 
 
-        ##Eucledian dist
-        # pos_dist = torch.norm(
-        #     anchors - positives, p=2, dim=1, keepdim=True
-        # )  # (batch_size, 1)
-        # pos_dist = pos_dist.expand(batch_size, num_negatives)
-        # neg_dist = torch.norm(anchors.unsqueeze(1) - negatives_list, p=2, dim=2)
+        #Eucledian dist
+        pos_dist = torch.norm(
+            anchors - positives, p=2, dim=1, keepdim=True
+        )  # (batch_size, 1)
+        pos_dist = pos_dist.expand(batch_size, num_negatives)
+        neg_dist = torch.norm(anchors.unsqueeze(1) - negatives_list, p=2, dim=2)
 
 
         #Cosine sim
-        pos_dist = torch.sum(
-            anchors * positives, dim=1, keepdim=True
-        )
-        pos_dist = pos_dist.expand(batch_size, num_negatives)
-        neg_dist = torch.sum(anchors.unsqueeze(1) * negatives_list, dim=2)
+        # pos_dist = torch.sum(
+        #     anchors * positives, dim=1, keepdim=True
+        # )
+        # pos_dist = pos_dist.expand(batch_size, num_negatives)
+        # neg_dist = torch.sum(anchors.unsqueeze(1) * negatives_list, dim=2)
 
 
 
-        # triplet_loss = pos_dist - neg_dist + self.margin  # (batch_size, num_negatives)
-        triplet_loss = self.margin - (pos_dist - neg_dist) 
+        triplet_loss = pos_dist - neg_dist + self.margin  # (batch_size, num_negatives)
+        # triplet_loss = self.margin - (pos_dist - neg_dist)
+         
         triplet_loss = torch.clamp(triplet_loss, min=0.0)  # Ensure non-negative loss
 
         if triplet_loss.numel() == 0:

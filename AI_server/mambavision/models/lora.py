@@ -29,6 +29,8 @@ class LoRALinear(nn.Module):
             rank=rank,
             alpha=alpha
         )
+        self.weight = self.linear.weight
+        self.bias = self.linear.bias
     
     def forward(self, x):
         return self.linear(x) + self.lora(x)
