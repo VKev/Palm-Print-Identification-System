@@ -85,7 +85,7 @@ def split_images_by_label(source_path, folder1, folder2):
 
     # Walk through the source directory to categorize images by label
     for filename in os.listdir(source_path):
-        if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".JPG"):
+        if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".JPG") or filename.endswith(".bmp"):
             # Extract the label from the filename
             label = filename.split('_')[-1].split('.')[0]  # Get the last part before the extension
             label_dict[label].append(filename)
@@ -180,7 +180,8 @@ def split_dataset_into_two(source_path, folder1, folder2):
 
 #NON BACKGROUND CUT:
 # Example usage
-# split_dataset_into_two(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance-test-set", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Register-unregister-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Query-unregister-half")
+# split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza-University-test-roi-by-our", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Register-unregister-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Query-unregister-half")
+split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\1", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\2")
 
 # Example usage
 # split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance-test-set", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Register-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Query-half")
@@ -205,7 +206,7 @@ def split_dataset_into_two(source_path, folder1, folder2):
 # split_dataset_into_two(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Rotate-Shilf\Real-raw-rotate-shift-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Rotate-Shilf\DQuery-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Rotate-Shilf\DRegister-half")
 
 # Example usage
-split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\Real-bg-cut-rotate-shilf-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\SQuery-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\SRegister-half")
+# split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\Real-bg-cut-rotate-shilf-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\SQuery-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\SRegister-half")
 
 # move_all_files(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf-roi-enhance")
 

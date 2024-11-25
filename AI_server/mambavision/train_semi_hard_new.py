@@ -39,12 +39,12 @@ parser.add_argument('--train_image_folder', type=str, default=r"raw/train", help
 parser.add_argument('--test_image_folder', type=str, default=r"raw/dataset-test/Sapienza-University-test-roi-by-our", help='Path to the test images folder')
 parser.add_argument('--batch_size', type=int, default=24, help='Batch size for training')
 parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs to train')
-parser.add_argument('--lr', type=float, default=5e-4, help='Learning rate')
+parser.add_argument('--lr', type=float, default=2e-4, help='Learning rate')
 parser.add_argument('--test', type=bool, default=False, help='Whether to run in test mode')
 parser.add_argument('--n_negatives', type=int, default=140, help='Number of negatives for training')
 parser.add_argument('--num_label_negative', type=int, default=96, help='Number of negative labels')
-parser.add_argument('--weight_decay', type=float, default=0.05, help='Weight decay for optimization')
-parser.add_argument('--min_lr', type=float, default=1e-5, help='Minimum learning rate')
+parser.add_argument('--weight_decay', type=float, default=2e-5, help='Weight decay for optimization')
+parser.add_argument('--min_lr', type=float, default=0.00005, help='Minimum learning rate')
 parser.add_argument('--num_workers', type=int, default=1, help='Number of workers for data loading')
 parser.add_argument('--test_negatives', type=int, default=100, help='Number of test negatives')
 parser.add_argument('--test_negatives_class', type=int, default=100, help='Number of test negatives per class')
@@ -67,7 +67,8 @@ test_negatives = args.test_negatives
 test_negatives_class = args.test_negatives_class
 val_batch_size = args.val_batch_size
 test_batch = args.test_batch
-
+persistent_workers=True
+pin_memory=True
 # continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_T_latest_19.pth"
 continue_checkpoint = r""
 wandb.init(
@@ -81,18 +82,27 @@ wandb.init(
 )
 
 if test:
-    val_batch_size = 4
-    test_batch = 4
-    batch_size = 4
-
-    n_negatives = 16
-    num_label_negative = 12
+    val_batch_size = 18
+    test_batch = 18
+    batch_size = 14
+    persistent_workers=False
+    pin_memory=False
+    n_negatives = 24
+    num_label_negative = 16
 
     train_size = 1000
+    num_workers = 4
+    test_negatives = 24
+    test_negatives_class = 16
 
-    test_negatives = 16
-    test_negatives_class = 12
+image_paths, labels = load_images_from_folders(train_image_folder)
+test_image_paths, test_labels = load_images_from_folders(test_image_folder)
 
+# if test:
+#     image_paths = image_paths[:train_size]
+#     labels = labels[:train_size]
+#     test_image_paths = test_image_paths[:train_size]
+#     test_labels = test_labels[:train_size]
 
 # Load the pre-trained model
 if not continue_checkpoint:
@@ -101,12 +111,12 @@ if not continue_checkpoint:
     for param in model.parameters():
         param.requires_grad = False
 
-    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj" ])
     model.to(device)
 else:
     print("Loading")
     model =  mamba_vision_T(pretrained=False).to(device)
-    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj" ])
     model.load_state_dict(torch.load(continue_checkpoint))
     for param in model.parameters():
         param.requires_grad = False
@@ -145,14 +155,6 @@ print(f"Number of parameters in head : {head_params}")
 print(model)
 
 
-image_paths, labels = load_images_from_folders(train_image_folder)
-test_image_paths, test_labels = load_images_from_folders(test_image_folder)
-
-if test:
-    image_paths = image_paths[:train_size]
-    labels = labels[:train_size]
-    test_image_paths = test_image_paths[:train_size]
-    test_labels = test_labels[:train_size]
 
 test_set = TripletDataset(
     test_image_paths,
@@ -189,8 +191,8 @@ train_loader = DataLoader(
     shuffle=True,
     collate_fn=triplet_collate_fn,
     num_workers=num_workers,
-    persistent_workers=True,
-    pin_memory=True,
+    persistent_workers=persistent_workers,
+    pin_memory=pin_memory,
 )
 val_loader = DataLoader(
     val_dataset,
@@ -198,8 +200,8 @@ val_loader = DataLoader(
     shuffle=True,
     collate_fn=triplet_collate_fn,
     num_workers=num_workers,
-    persistent_workers=True,
-    pin_memory=True,
+    persistent_workers=persistent_workers,
+    pin_memory=pin_memory,
 )
 test_loader = DataLoader(
     test_set,
@@ -207,12 +209,12 @@ test_loader = DataLoader(
     shuffle=False,
     collate_fn=triplet_collate_fn,
     num_workers=num_workers,
-    persistent_workers=True,
-    pin_memory=True,
+    persistent_workers=persistent_workers,
+    pin_memory=pin_memory,
 )
 
 
-triplet_loss = BatchAllTripletLoss(margin=0.5)
+triplet_loss = BatchAllTripletLoss(margin=0.75)
 
 optimizer = optim.AdamW(
     filter(lambda p: p.requires_grad, model.parameters()),

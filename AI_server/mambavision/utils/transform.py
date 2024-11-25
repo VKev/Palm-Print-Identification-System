@@ -38,7 +38,7 @@ transform = transforms.Compose(
     [
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.4440], std=[0.2104]),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
     ]
 )
 
@@ -68,7 +68,7 @@ augmentation = transforms.Compose(
             [transforms.RandomAffine(degrees=0, translate=(0.1, 0.1))], p=0.7
         ),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.4440], std=[0.2104]),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
     ]
 )
 

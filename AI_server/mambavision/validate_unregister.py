@@ -3,19 +3,19 @@ from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
 from models import CustomHead
-from models import mamba_vision_T
+from models import mamba_vision_T, mamba_vision_B
 from scipy.spatial.distance import cosine
 from torch import nn, optim
 import torch.nn.functional as F
 from models import add_lora_to_model
 # Load the model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# model = mamba_vision_T(
-#     pretrained=True
-# )  
-model =  mamba_vision_T(pretrained=False).to(device)
-add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
-model.load_state_dict(torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_12.pth"))
+model = mamba_vision_T(
+    pretrained=True
+)  
+# model =  mamba_vision_T(pretrained=False).to(device)
+# add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
+# model.load_state_dict(torch.load(r"checkpoints/fine_tuned_mamba_vision_T_latest_50.pth", weights_only=True))
 model.to(device)
 model.eval()  # Set the model to evaluation mode
 
@@ -26,7 +26,7 @@ def preprocess_images(image_paths):
         [
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.4440], std=[0.2104]),
+            transforms.Normalize(mean=[0.5], std=[0.5]),
         ]
     )
 
@@ -90,8 +90,10 @@ def l2_normalize(embeddings):
 # image_paths = get_image_paths(r"raw/realistic-test/bg-cut/Register-half")
 # image_paths = get_image_paths(r"raw/realistic-test/bg-cut/Register-unregister-half")
 
+# image_paths = get_image_paths(r"raw/dataset-test/Register-register-half")
 # image_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Rotate-Shilf/SRegister-half")
-image_paths = get_image_paths(r"raw/realistic-test/bg-cut/Rotate-Shilf/SRegister-half")
+image_paths = get_image_paths(r"raw/1")
+# image_paths = get_image_paths(r"raw/realistic-test/bg-cut/Rotate-Shilf/SRegister-half")
 # image_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Register-unregister-half")
 # image_paths = get_image_paths(r"raw/dataset-test/SRegister-half")
 # image_paths = get_image_paths(r"raw/dataset-test/DRegister-half")
@@ -105,8 +107,10 @@ outputs = l2_normalize(outputs)
 # strange_paths = get_image_paths(r"raw/realistic-test/bg-cut/Query-half")
 # strange_paths = get_image_paths(r"raw/realistic-test/bg-cut/Query-unregister-half")
 
+# strange_paths = get_image_paths(r"raw/dataset-test/Query-register-half")
 # strange_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Rotate-Shilf/SQuery-half")
-strange_paths = get_image_paths(r"raw/realistic-test/bg-cut/Rotate-Shilf/SQuery-half")
+strange_paths = get_image_paths(r"raw/2")
+# strange_paths = get_image_paths(r"raw/realistic-test/bg-cut/Rotate-Shilf/SQuery-half")
 # strange_paths = get_image_paths(r"raw/realistic-test/non-bg-cut/Query-unregister-half")
 # strange_paths = get_image_paths(r"raw/dataset-test/SQuery-half")
 # strange_paths = get_image_paths(r"raw/dataset-test/DQuery-half")
@@ -169,7 +173,7 @@ for idx, image_path in enumerate(strange_paths):
 def one_vs_all(query_embedding, dict):
     distances = []
     for key, value in dict.items():
-        distance = euclidean_distance(query_embedding, value)
+        distance = cosine_sim(query_embedding, value)
         distances.append((key, distance))
     min_distance_element = min(distances, key=lambda x: x[1])
     return min_distance_element
