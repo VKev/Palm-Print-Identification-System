@@ -4,12 +4,14 @@ import torch.nn.functional as F
 import math
 
 class LoRALayer(nn.Module):
-    def __init__(self, in_features, out_features, rank=4, alpha=1):
+    def __init__(self, in_features, out_features, rank=4, alpha=1, dropout_prob = 0.2):
         super().__init__()
         self.lora_A = nn.Parameter(torch.zeros(in_features, rank))
         self.lora_B = nn.Parameter(torch.zeros(out_features, rank))
         self.scaling = alpha / rank
         
+        self.dropout = nn.Dropout(dropout_prob)
+
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
         nn.init.zeros_(self.lora_B)
 
@@ -17,17 +19,22 @@ class LoRALayer(nn.Module):
         # x: (batch_size, in_features)
         # lora_A: (in_features, rank)
         # lora_B: (out_features, rank)
-        return (x @ self.lora_A @ self.lora_B.T) * self.scaling
+        # return (x @ self.lora_A @ self.lora_B.T) * self.scaling
+        out = x @ self.lora_A  # (batch_size, rank)
+        out = self.dropout(out)  # Apply dropout to the intermediate representation
+        out = out @ self.lora_B.T  # (batch_size, out_features)
+        return out * self.scaling
 
 class LoRALinear(nn.Module):
-    def __init__(self, linear_layer, rank=4, alpha=1):
+    def __init__(self, linear_layer, rank=4, alpha=1, dropout_prob = 0.2):
         super().__init__()
         self.linear = linear_layer
         self.lora = LoRALayer(
             linear_layer.in_features,
             linear_layer.out_features,
             rank=rank,
-            alpha=alpha
+            alpha=alpha,
+            dropout_prob = dropout_prob
         )
         self.weight = self.linear.weight
         self.bias = self.linear.bias
@@ -59,7 +66,7 @@ def get_parent_and_child(model, path):
     parent = get_module_by_path(model, '.'.join(parent_path))
     return parent, child_name
 
-def add_lora_to_model(model, rank=4, alpha=1, target_modules=None):
+def add_lora_to_model(model, rank=4, alpha=1, dropout_prob = 0.2, target_modules=None):
     """
     Add LoRA layers to specific linear layers in the model.
     
@@ -95,7 +102,7 @@ def add_lora_to_model(model, rank=4, alpha=1, target_modules=None):
         original_layer = getattr(parent, child_name)
         
         # Replace with LoRA version
-        lora_layer = LoRALinear(original_layer, rank=rank, alpha=alpha)
+        lora_layer = LoRALinear(original_layer, rank=rank, alpha=alpha, dropout_prob=0.2)
         setattr(parent, child_name, lora_layer)
         modified_modules.append(target)
     

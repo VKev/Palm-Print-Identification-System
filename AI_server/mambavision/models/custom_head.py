@@ -6,121 +6,26 @@ import math
 from einops import rearrange
 
 class CustomHead(nn.Module):
-    def __init__(self, in_channels=640, num_channels=640, height=7, width=7):
+    def __init__(self, in_channels=640):
         super(CustomHead, self).__init__()
-        
-        self.global_pool = nn.AdaptiveAvgPool2d(1)  # Reduces (72, 640, 7, 7) to (72, 640, 1, 1)
-        self.attention = nn.MultiheadAttention(embed_dim=num_channels, num_heads=8,dropout=0.2)
-        self.pos_encoding = self._create_2d_positional_encoding(height, width, num_channels)
-        self.rfa_conv= RFAConv(in_channels, 16, 3, 1)
-        self.fc = nn.Linear(in_channels + 16*height*width, in_channels)
+
+        self.fc1 = nn.Linear(in_channels, 256)  
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(256, 128)        
         self.init_weights()
-    
+
     def init_weights(self):
-        """
-        Initialize the weights for the CustomHead module:
-        - MultiheadAttention: Xavier/Glorot initialization for linear projections
-        - Linear layer: Xavier/Glorot initialization
-        - Positional encoding: Already initialized, no gradient required
-        """
-        # Initialize MultiheadAttention weights
-        # The MultiheadAttention module has 4 linear layers (q_proj, k_proj, v_proj, out_proj)
-        for name, p in self.attention.named_parameters():
-            if 'weight' in name:
-                nn.init.xavier_uniform_(p)
-            elif 'bias' in name:
-                nn.init.zeros_(p)
-
-        nn.init.xavier_uniform_(self.fc.weight)
-        nn.init.zeros_(self.fc.bias)
-        self.pos_encoding.requires_grad_(False)
-
-    def _create_2d_positional_encoding(self, height, width, channels):
-        """
-        Creates 2D positional encodings for a feature map of size (height, width)
-        with specified number of channels.
-        """
-        if channels % 4 != 0:
-            raise ValueError("Number of channels must be divisible by 4 for 2D positional encoding")
-            
-        pe = torch.zeros(1, channels, height, width)
-        channels_per_axis = channels // 4  # Split channels for sin/cos encoding of height and width
-        
-        # Create position indexes
-        y_pos = torch.arange(height).float().unsqueeze(1).expand(-1, width)
-        x_pos = torch.arange(width).float().unsqueeze(0).expand(height, -1)
-        
-        # Calculate divisor for different frequency bands
-        div_term = torch.exp(torch.arange(0, channels_per_axis, 2).float() * (-math.log(10000.0) / channels_per_axis))
-        
-        # Encode Y positions
-        y_start = 0
-        pe[0, y_start:y_start+channels_per_axis:2, :, :] = torch.sin(y_pos.unsqueeze(0) * div_term.view(-1, 1, 1))
-        pe[0, y_start+1:y_start+channels_per_axis:2, :, :] = torch.cos(y_pos.unsqueeze(0) * div_term.view(-1, 1, 1))
-        
-        # Encode X positions
-        x_start = channels_per_axis
-        pe[0, x_start:x_start+channels_per_axis:2, :, :] = torch.sin(x_pos.unsqueeze(0) * div_term.view(-1, 1, 1))
-        pe[0, x_start+1:x_start+channels_per_axis:2, :, :] = torch.cos(x_pos.unsqueeze(0) * div_term.view(-1, 1, 1))
-        
-        # Encode radial distance from center
-        center_y, center_x = height // 2, width // 2
-        y_diff = y_pos - center_y
-        x_diff = x_pos - center_x
-        radius = torch.sqrt(y_diff**2 + x_diff**2)
-        
-        r_start = 2 * channels_per_axis
-        pe[0, r_start:r_start+channels_per_axis:2, :, :] = torch.sin(radius.unsqueeze(0) * div_term.view(-1, 1, 1))
-        pe[0, r_start+1:r_start+channels_per_axis:2, :, :] = torch.cos(radius.unsqueeze(0) * div_term.view(-1, 1, 1))
-        
-        # Encode angle from center
-        angle = torch.atan2(y_diff, x_diff)
-        a_start = 3 * channels_per_axis
-        pe[0, a_start:a_start+channels_per_axis:2, :, :] = torch.sin(angle.unsqueeze(0) * div_term.view(-1, 1, 1))
-        pe[0, a_start+1:a_start+channels_per_axis:2, :, :] = torch.cos(angle.unsqueeze(0) * div_term.view(-1, 1, 1))
-        
-        # Register as buffer so it moves to GPU with the model
-        return nn.Parameter(pe, requires_grad=False)
+        nn.init.xavier_uniform_(self.fc1.weight)
+        nn.init.zeros_(self.fc1.bias)
+        nn.init.xavier_uniform_(self.fc2.weight)
+        nn.init.zeros_(self.fc2.bias)
 
     def forward(self, x):
-        # x has shape (72, 640, 7, 7)
-        batch_size, num_channels, height, width = x.shape
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
         
-        ### Global Feature Extraction ###
-        global_feature = self.global_pool(x)  # Shape: (72, 640, 1, 1)
-        global_feature = torch.flatten(global_feature, 1)  # Shape: (72, 640) after flattening
-
-        ### Local Feature Extraction ###
-        pos_encoding = self.pos_encoding.expand(batch_size, -1, -1, -1).to(x.device)
-        local_feature = x +pos_encoding # Shape: (72, 640, 7, 7), local feature after convolution
-        ### Self-Attention Across Channels ###
-        # Reshape local feature for attention mechanism
-        # Reshape to (batch_size*height*width, num_channels) for attention
-        
-        local_feature_flat = local_feature.view(batch_size, num_channels, height * width).permute(2, 0, 1)  # Shape: (49, 72, 640)
-        
-        # Apply self-attention to the local feature
-        attended_local_feature, _ = self.attention(local_feature_flat, local_feature_flat, local_feature_flat)  # Shape: (49, 72, 640)
-        attended_local_feature = attended_local_feature.permute(1, 2, 0).view(batch_size, num_channels, height, width)  # Back to (72, 640, 7, 7)
-
-
-
-        attended_local_feature = attended_local_feature + x
-
-        attended_local_feature = self.rfa_conv(attended_local_feature)
-        batch_size, num_channels, height, width = attended_local_feature.shape
-        ### Concatenation of Global and Local Features ###
-        # Flatten attended local feature
-        attended_local_flat = attended_local_feature.view(batch_size, num_channels, -1)  # Shape: (72, 640, 49)
-        attended_local_flat = attended_local_flat.view(batch_size, -1)
-        # print(attended_local_flat.shape)
-        # attended_local_flat = attended_local_flat.mean(dim=-1)  # Aggregate local features, Shape: (72, 640)
-
-        # Concatenate global and attended local features
-        combined_feature = torch.cat([global_feature, attended_local_flat], dim=1)  # Shape: (72, 1280)
-        output = self.fc(combined_feature)
-        return output
-
+        return x
 
 class RFAConv(nn.Module):
     def __init__(self,in_channel,out_channel,kernel_size,stride=1):

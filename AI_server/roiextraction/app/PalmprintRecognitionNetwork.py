@@ -30,9 +30,9 @@ import copy
 torch.set_default_dtype(torch.float64)
 import numpy as np
 import cv2
-from utils import getTongjiLabels
-from models import ROILAnet
-from models import TPSGridGen
+from ..utils import getTongjiLabels
+from ..models import ROILAnet
+from ..models import TPSGridGen
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -427,7 +427,7 @@ def predictAndPreprocess(path: str):
     return img
 
 
-def roicut(image):
+def roicut(images):
     """
     Preprocess a single image and return the CNN-ready tensor.
     @path: path to hand image
@@ -446,9 +446,6 @@ def roicut(image):
         [
             transforms.Grayscale(),  # Ensure grayscale for palm-vein images
             transforms.CenterCrop((224, 224)),
-            transforms.ColorJitter(
-                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
-            ),  # Shift hue and contrast
             transforms.ToTensor(),
             transforms.Lambda(
                 lambda x: x.repeat(3, 1, 1)
@@ -456,35 +453,35 @@ def roicut(image):
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ]
     )
+    roi_images = []
+    for image in images:
+        inputPIL = image
+        (PILMain, sourceImage, resizedImage) = getOriginalAndResizedInput(inputPIL)
 
-    recognitionNetwork.eval()
-    inputPIL = image
-    (PILMain, sourceImage, resizedImage) = getOriginalAndResizedInput(inputPIL)
+        sourceImage = torch.stack([sourceImage.squeeze()])
+        resizedImage = torch.stack([resizedImage.squeeze()])
 
-    sourceImage = torch.stack([sourceImage.squeeze()])
-    resizedImage = torch.stack([resizedImage.squeeze()])
+        # get normalized coordinates
+        theta_hat = getThetaHat(resizedImage, localisationNetwork)
 
-    # get normalized coordinates
-    theta_hat = getThetaHat(resizedImage, localisationNetwork)
+        # get all ROIs
+        IROI = sampleGrid(
+            theta_hat=theta_hat,
+            sourceImage=sourceImage,
+            target_width=300,
+            target_height=300,
+        )
+        IROI = IROI[0]
 
-    # get all ROIs
-    IROI = sampleGrid(
-        theta_hat=theta_hat,
-        sourceImage=sourceImage,
-        target_width=300,
-        target_height=300,
-    )
-    IROI = IROI[0]
+        # Convert the ROI to a PIL image and apply transformations for CNN
+        b = Image.fromarray(np.uint8(IROI.cpu()[0])).convert("L")
+        img = CNNtransformer(b)
 
-    # Convert the ROI to a PIL image and apply transformations for CNN
-    b = Image.fromarray(np.uint8(IROI.cpu()[0])).convert("L")
-    img = CNNtransformer(b)
-
-    # Add a batch dimension and move to the correct device
-    img = img.view(1, img.size(0), img.size(1), img.size(2))
-    img = img.to(device)
-
-    return img
+        # Add a batch dimension and move to the correct device
+        img = img.view(1, img.size(0), img.size(1), img.size(2))
+        img = img.to(device)
+        roi_images.append(tensor_to_image(img))
+    return roi_images
 
 
 def tensor_to_image(tensor):

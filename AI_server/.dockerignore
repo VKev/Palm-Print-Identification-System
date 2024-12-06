@@ -1,0 +1,10 @@
+mambavision/checkpoint/*.pth
+mambavision/*.zip
+mambavision/raw/
+
+*.bmp
+*.pt
+*.JPG
+*.jpg
+*.zip
+*.png

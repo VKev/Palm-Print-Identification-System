@@ -88,7 +88,59 @@ def enhance_images(input_path, regex_pattern):
                     pass
                     print(f"Error processing file {source_file}: {e}")
 
+def darken_pilimages(images, darken_amount=0.75):
+    """
+    Darkens the given list of images by a specified amount.
+    
+    Parameters:
+    - images (list of PIL.Image): List of images to be darkened.
+    - darken_amount (float): The factor by which to darken the image (e.g., 0.8 for slight darkening).
+    
+    Returns:
+    - list of PIL.Image: List of darkened images.
+    """
+    darkened_images = []
+    try:
+        for image in images:
+            # Convert the image to grayscale
+            gray_img = image.convert("L")
+            enhancer = ImageEnhance.Brightness(gray_img)
+            darkened_img = enhancer.enhance(darken_amount)  # Apply darkening
+            darkened_images.append(darkened_img)  # Append processed image to the list
+        
+        return darkened_images
 
+    except Exception as e:
+        print(f"Error darkening image: {e}")
+        return []
+
+
+def enhance_pilimages(images, enhance_amount=1.3):
+    """
+    Enhances the contrast of the given list of images.
+    
+    Parameters:
+    - images (list of PIL.Image): List of images to be enhanced.
+    - enhance_amount (float): The amount by which to enhance the contrast.
+    
+    Returns:
+    - list of PIL.Image: List of enhanced images.
+    """
+    enhanced_images = []
+    try:
+        for image in images:
+            # Convert the image to grayscale
+            gray_img = image.convert("L")
+            enhancer = ImageEnhance.Contrast(gray_img)
+            enhanced_img = enhancer.enhance(enhance_amount)  # Enhance contrast
+            enhanced_images.append(enhanced_img)  # Append processed image to the list
+        
+        return enhanced_images
+
+    except Exception as e:
+        print(f"Error enhancing image: {e}")
+        return []
+    
 def apply_gabor_filter_multi_orientations(image, ksize=31, sigma=2.0, lambd=10.0, gamma=0.5, psi=0, num_orientations=8):
     """Apply Gabor filter at multiple orientations and combine the results"""
     filtered_images = []
@@ -182,14 +234,14 @@ if __name__ == "__main__":
         'psi': 0           # Phase offset
     }
     
-    process_images_with_gabor(input_dir, output_dir, gabor_params)
+    # process_images_with_gabor(input_dir, output_dir, gabor_params)
 
 
-# # Example usage
-# if __name__ == "__main__":
-#     input_path = r"AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf-roi-enhance"
-#     # regex_pattern = r"^\d{3}P_(PR|PL)\d{2}\.bmp$"  # Adjust the regex as needed
-#     regex_pattern = r".+\.(jpg|jpeg|png|bmp|gif|JPG)$"  # Adjust the regex as needed
+# Example usage
+if __name__ == "__main__":
+    input_path = r"AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf-roi-enhance"
+    # regex_pattern = r"^\d{3}P_(PR|PL)\d{2}\.bmp$"  # Adjust the regex as needed
+    regex_pattern = r".+\.(jpg|jpeg|png|bmp|gif|JPG)$"  # Adjust the regex as needed
 
-#     # enhance_images(input_path, regex_pattern)
-#     gabor_filter_palmprint(r'C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train',r'C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train_gabor_filter')
+    # enhance_images(input_path, regex_pattern)
+    enhance_images(r'C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Sapienza-University-test-roi-by-our',regex_pattern)

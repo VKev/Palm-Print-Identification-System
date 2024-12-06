@@ -2,6 +2,8 @@ import os
 import re
 import random
 import shutil
+
+
 def rename_images_by_parent_folder(input_path):
     """
     Renames images in each subfolder by using the frame number combined with its parent folder's identifier.
@@ -13,14 +15,14 @@ def rename_images_by_parent_folder(input_path):
     folder_pattern = re.compile(r"video_frames_(\d+)")
     # Regex pattern to match frame number in filenames (e.g., frame_1.jpg -> 1)
     file_pattern = re.compile(r"frame_(\d+)\.jpg", re.IGNORECASE)
-    
+
     # Iterate through subfolders in the input directory
     for subfolder in os.listdir(input_path):
         folder_match = folder_pattern.match(subfolder)
         if folder_match:
             parent_id = folder_match.group(1)  # Extract the parent folder ID
             subfolder_path = os.path.join(input_path, subfolder)
-            
+
             # Ensure it's a directory
             if os.path.isdir(subfolder_path):
                 # Iterate through image files in the subfolder
@@ -32,10 +34,11 @@ def rename_images_by_parent_folder(input_path):
                         new_filename = f"{frame_number}_{parent_id}.jpg"
                         source_file = os.path.join(subfolder_path, filename)
                         destination_file = os.path.join(subfolder_path, new_filename)
-                        
+
                         # Rename the file
                         os.rename(source_file, destination_file)
                         print(f"Renamed {filename} to {new_filename}")
+
 
 def move_all_files(source_path, destination_path):
     """
@@ -47,13 +50,13 @@ def move_all_files(source_path, destination_path):
     """
     # Ensure the destination path exists
     os.makedirs(destination_path, exist_ok=True)
-    
+
     # Walk through the source directory
     for dirpath, _, filenames in os.walk(source_path):
         for filename in filenames:
             source_file = os.path.join(dirpath, filename)
             destination_file = os.path.join(destination_path, filename)
-            
+
             # Move the file
             try:
                 shutil.move(source_file, destination_file)
@@ -61,16 +64,18 @@ def move_all_files(source_path, destination_path):
             except Exception as e:
                 print(f"Error moving file {source_file}: {e}")
 
+
 # Example usage
 
 import os
 import shutil
 from collections import defaultdict
 
+
 def split_images_by_label(source_path, folder1, folder2):
     """
     Splits images by label and copies them to two specified folders.
-    
+
     Parameters:
     - source_path (str): The path where the images are located.
     - folder1 (str): The path to the first folder where half of the images will be copied.
@@ -85,9 +90,16 @@ def split_images_by_label(source_path, folder1, folder2):
 
     # Walk through the source directory to categorize images by label
     for filename in os.listdir(source_path):
-        if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".JPG") or filename.endswith(".bmp"):
+        if (
+            filename.endswith(".jpg")
+            or filename.endswith(".jpeg")
+            or filename.endswith(".JPG")
+            or filename.endswith(".bmp")
+        ):
             # Extract the label from the filename
-            label = filename.split('_')[-1].split('.')[0]  # Get the last part before the extension
+            label = filename.split("_")[-1].split(".")[
+                0
+            ]  # Get the last part before the extension
             label_dict[label].append(filename)
 
     # Split and copy images to the two folders
@@ -99,7 +111,7 @@ def split_images_by_label(source_path, folder1, folder2):
                 destination_file = os.path.join(folder1, image)
             else:
                 destination_file = os.path.join(folder2, image)
-            
+
             # Copy the file to the appropriate destination
             try:
                 shutil.copy(source_file, destination_file)
@@ -107,10 +119,11 @@ def split_images_by_label(source_path, folder1, folder2):
             except Exception as e:
                 print(f"Error copying file {source_file}: {e}")
 
+
 def split_dataset_into_two(source_path, folder1, folder2):
     """
     Splits an entire dataset into two folders such that each half has different labels.
-    
+
     Parameters:
     - source_path (str): The path where the images are located.
     - folder1 (str): The path to the first folder for one half of the dataset.
@@ -125,9 +138,16 @@ def split_dataset_into_two(source_path, folder1, folder2):
 
     # Walk through the source directory to categorize images by label
     for filename in os.listdir(source_path):
-        if filename.endswith(".jpg") or filename.endswith(".jpeg"):
+        if (
+            filename.endswith(".jpg")
+            or filename.endswith(".jpeg")
+            or filename.endswith(".JPG")
+            or filename.endswith(".bmp")
+        ):
             # Extract the label from the filename
-            label = filename.split('_')[-1].split('.')[0]  # Get the last part before the extension
+            label = filename.split("_")[-1].split(".")[
+                0
+            ]  # Get the last part before the extension
             label_dict[label].append(filename)
 
     # Shuffle labels to ensure randomness
@@ -154,6 +174,7 @@ def split_dataset_into_two(source_path, folder1, folder2):
             shutil.copy(source_file, destination_file)
             print(f"Copied: {source_file} to {destination_file}")
 
+
 # Example usage
 # split_dataset_into_two(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Roi-bg-cut-enhance-test-set", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Register-unregister-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Query-unregister-half")
 
@@ -166,41 +187,22 @@ def split_dataset_into_two(source_path, folder1, folder2):
 # rename_images_by_parent_folder(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Roi-bg-cut-enhance - Copy")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-#NON BACKGROUND CUT:
+# NON BACKGROUND CUT:
 # Example usage
-# split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza-University-test-roi-by-our", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Register-unregister-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Query-unregister-half")
-split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\1", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\2")
+# split_dataset_into_two(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\Real-bg-cut-rotate-shilf-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\Register-unregistered-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Rotate-Shilf\Query-unregister-half")
+# split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Query-register-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Register-register-half")
 
 # Example usage
-# split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance-test-set", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Register-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Query-half")
+split_dataset_into_two(
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Sapienza-University-test-roi-by-our",
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Register-unregister-half",
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Query-unregister-half",
+)
 
 # move_all_files(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance-test-set")
 
 # Example usage
 # rename_images_by_parent_folder(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance")
-
-
-
-
-
-
-
-
-
-
-
 
 
 # split_dataset_into_two(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Rotate-Shilf\Real-raw-rotate-shift-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Rotate-Shilf\DQuery-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Rotate-Shilf\DRegister-half")
@@ -212,4 +214,3 @@ split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_se
 
 # Example usage
 # rename_images_by_parent_folder(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf")
-

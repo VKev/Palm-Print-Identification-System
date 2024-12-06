@@ -2,7 +2,7 @@ import os
 import cv2
 import torch
 import numpy as np
-from depth_anything_v2.dpt import DepthAnythingV2
+from .depth_anything_v2.dpt import DepthAnythingV2
 from PIL import Image
 
 DEVICE = (
@@ -32,39 +32,49 @@ encoder = "vitb"  # or 'vits', 'vitb', 'vitg'
 model = DepthAnythingV2(**model_configs[encoder])
 model.load_state_dict(
     torch.load(
-        f"checkpoints/depth_anything_v2_{encoder}.pth",
+        f"depthanythingv2/checkpoints/depth_anything_v2_{encoder}.pth",
         map_location="cpu",
     )
 )
 model = model.to(DEVICE).eval()
 
 
-def background_cut(image):
-    # Step 1: Load the image
-    if isinstance(image, Image.Image):
-        raw_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-    else:
-        raw_img = cv2.imread(image)
+def background_cut(images, depth_threshold = 0.5):
+    """
+    Process a list of images to apply background cutting using depth maps.
 
-    # Step 2: Get the depth map
-    depth = model.infer_image(raw_img)  # HxW raw depth map in numpy
-    depth = (depth - depth.min()) / (depth.max() - depth.min())  # Normalize depth
+    Parameters:
+    - images (list): A list of Pillow Image objects or file paths to images.
 
-    # Step 3: Create mask based on depth threshold
-    mask = depth < 0.495
-    # 0.475
+    Returns:
+    - processed_images (list): A list of processed images (PIL Image objects) with the background cut.
+    """
+    processed_images = []
 
-    # Step 4: Black out pixels where the mask is True
-    blacked_out_img = raw_img.copy()
-    blacked_out_img[mask] = 0
-    gray_blacked_out_img = cv2.cvtColor(blacked_out_img, cv2.COLOR_BGR2GRAY)
-    # Step 5: Save the blacked-out image back to the original path (replacing the old image)
-    if isinstance(image, Image.Image):
-        # Convert NumPy array back to Pillow Image
-        return Image.fromarray(gray_blacked_out_img).convert("RGB")
-    else:
-        # Return as NumPy array (OpenCV format)
-        return gray_blacked_out_img
+    for image in images:
+        # Step 1: Load the image (handle both Pillow Image and file paths)
+        if isinstance(image, Image.Image):
+            raw_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        else:
+            raw_img = cv2.imread(image)
+
+        # Step 2: Get the depth map for the current image
+        depth = model.infer_image(raw_img)  # HxW raw depth map in numpy
+        depth = (depth - depth.min()) / (depth.max() - depth.min())  # Normalize depth
+
+        # Step 3: Create mask based on depth threshold
+        mask = depth < depth_threshold  # Threshold to create mask (0.475, 0.495)
+        # Step 4: Black out pixels where the mask is True
+        blacked_out_img = raw_img.copy()
+        blacked_out_img[mask] = 0
+        gray_blacked_out_img = cv2.cvtColor(blacked_out_img, cv2.COLOR_BGR2GRAY)
+
+        pil_image = Image.fromarray(gray_blacked_out_img)
+
+        processed_images.append(pil_image)
+
+    return processed_images
+    
 
 
 def process_and_blackout_image(image_path):
