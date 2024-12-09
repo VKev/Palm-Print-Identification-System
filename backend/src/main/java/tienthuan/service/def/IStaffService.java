@@ -5,7 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface IStaffService {
 
-    ResponseEntity<?> uploadPalmPrintImages(MultipartFile[] files);
+    ResponseEntity<?> uploadPalmPrintImages(String studentCode, MultipartFile[] files);
 
     ResponseEntity<?> uploadPalmPrintVideo(MultipartFile videoFile);
 
