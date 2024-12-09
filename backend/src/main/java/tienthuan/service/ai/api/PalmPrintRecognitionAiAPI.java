@@ -1,0 +1,92 @@
+package tienthuan.service.ai.api;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpMethod;
+import java.util.*;
+
+@Slf4j
+@Service
+public class PalmPrintRecognitionAiAPI {
+
+    private final HttpHeaders headers = new HttpHeaders();
+    private final String BASE_URL = "https://0c8d-118-69-69-187.ngrok-free.app"; // "http://localhost:5000"
+
+    public PalmPrintRecognitionAiAPI () {
+        this.headers.set("Content-Type", "application/json");
+    }
+
+    @AllArgsConstructor
+    private static class InferenceRequest {
+        @JsonProperty("id")
+        public String studentCode;
+
+        @JsonProperty("images")
+        public Collection<byte[]> frames;
+    }
+
+    @AllArgsConstructor
+    private static class FramesRequest {
+        @JsonProperty("images")
+        public Collection<byte[]> frames;
+    }
+
+
+    public ResponseEntity<?> testRequestAiServer() {
+        RestTemplate restTemplate = new RestTemplate();
+        long startTime = System.currentTimeMillis();
+        ResponseEntity<?> response = restTemplate.getForEntity(BASE_URL + "/hello-world", Object.class);
+        long endTime = System.currentTimeMillis();
+        long executionTime = endTime - startTime;
+        log.info("Execution time: {} seconds", executionTime / 1000.0);
+        return response;
+    }
+
+
+    public ResponseEntity<?> registerBackgroundCut(Collection<byte[]> frames) {
+        String url = BASE_URL + "/ai/register/backgroundcut";
+        return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
+    }
+
+
+    public ResponseEntity<?> registerRoiCut(Collection<byte[]> frames) {
+        String url = BASE_URL + "/ai/register/roicut";
+        return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
+    }
+
+
+    public ResponseEntity<Object> registerInference(String studentCode, Collection<byte[]> frames) {
+        String url = BASE_URL + "/ai/register/inference";
+        return this.exchangeFramesToAiServer(new InferenceRequest(studentCode, frames), url, HttpMethod.POST);
+    }
+
+    /*
+    {
+        "accept": true/false,
+        "average_occurrence_score": 1.0,
+        "average_similarity_score": 1.0,
+        "most_common_id": "SE184160",
+        "occurrence_count": 2
+    }
+     */
+    public ResponseEntity<Object> registerFinalPhase(Collection<byte[]> frames) {
+        String url = BASE_URL + "/ai/recognize/euclidean";
+        return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
+    }
+
+
+    private <T> ResponseEntity<Object> exchangeFramesToAiServer(T data, String url, HttpMethod httpMethod) {
+        RestTemplate restTemplate = new RestTemplate();
+        HttpEntity<Object> requestEntity = new HttpEntity<>(data, headers);
+        return restTemplate.exchange(url, httpMethod, requestEntity, Object.class);
+    }
+
+
+
+}
