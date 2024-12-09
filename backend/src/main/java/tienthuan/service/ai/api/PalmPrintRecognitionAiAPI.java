@@ -89,8 +89,13 @@ public class PalmPrintRecognitionAiAPI {
         "occurrence_count": 2
     }
      */
-    public ResponseEntity<Object> registerFinalPhase(Collection<byte[]> frames) {
+    public ResponseEntity<Object> recognizePalmPrintEuclidean(Collection<byte[]> frames) {
         String url = BASE_URL + "/ai/recognize/euclidean";
+        return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
+    }
+
+    public ResponseEntity<Object> recognizePalmPrintCosine(Collection<byte[]> frames) {
+        String url = BASE_URL + "/ai/recognize/cosine";
         return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
     }
 

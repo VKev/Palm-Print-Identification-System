@@ -38,10 +38,10 @@ public class VideoUtil {
                     if (frameNumber % constant.IMAGES_FRAME_JUMP == 0) {
                         BufferedImage bufferedImage = converter.convert(frame);
                         if (bufferedImage != null) {
-                            File output = new File("D:\\DetectHandID\\images" + "/frame_" + frameNumber + constant.IMAGES_EXTENSION_TYPE);
+                            File output = new File(System.getProperty("java.io.tmpdir") + "/frame_" + frameNumber + constant.IMAGES_EXTENSION_TYPE);
                             imageFiles.add(output);
                             ImageIO.write(bufferedImage, constant.IMAGES_EXTENSION_TYPE.substring(1), output);
-                            log.info("Saved frame: " + output.getAbsolutePath());
+                            //log.info("Saved frame: " + output.getAbsolutePath());
                         }
                     }
                 }
@@ -58,8 +58,11 @@ public class VideoUtil {
 
     private File convertToFile(MultipartFile multipartFile) throws IOException {
         File convertedFile = new File(System.getProperty("java.io.tmpdir") + "/" + multipartFile.getOriginalFilename());
-        try (InputStream inputStream = multipartFile.getInputStream()) {
+        try {
+            InputStream inputStream = multipartFile.getInputStream();
             Files.copy(inputStream, convertedFile.toPath());
+        }
+        catch (IOException ignored) {
         }
         return convertedFile;
     }
