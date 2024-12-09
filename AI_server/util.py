@@ -22,7 +22,7 @@ def decode_single_image(base64_str):
         image_data = base64.b64decode(base64_str)
         
         # Convert the binary data to a PIL image
-        image = Image.open(io.BytesIO(image_data))
+        image = Image.open(io.BytesIO(image_data)).convert("RGB")
         return image
     except Exception as e:
         print(f"Error decoding image: {e}")

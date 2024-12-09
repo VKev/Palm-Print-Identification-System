@@ -6,6 +6,7 @@ from models import CustomHead, mamba_vision_T,mamba_vision_L2, mamba_vision_B, m
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import os
+import matplotlib.pyplot as plt
 from models import add_lora_to_model
 import numpy as np
 # Load the model
@@ -14,13 +15,14 @@ import timm
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = mamba_vision_T(pretrained=True)
-# model =  mamba_vision_T(pretrained=False).to(device)
-# add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
-# model.load_state_dict(torch.load(r"checkpoints/fine_tuned_mamba_vision_T_140_55.pth"))
+# model = mamba_vision_T(pretrained=True)
+model =  mamba_vision_T(pretrained=False).to(device)
+add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj", "levels.2.blocks.7.mlp.fc2", "levels.2.blocks.7.mlp.fc1", "levels.2.blocks.7.mixer.proj", "levels.2.blocks.7.mixer.qkv"])
+checkpoint = torch.load(r"checkpoints/checkpoint_epoch_72.pth")
+# model.load_state_dict(torch.load(r"checkpoints/checkpoint_epoch_65.pth"))
 # model.head = CustomHead(in_channels=640)
-# checkpoint = torch.load(r"checkpoints/checkpoint_epoch_22.pth")
-# model.load_state_dict(checkpoint['model_state_dict'])
+# checkpoint = torch.load(r"checkpoints/checkpoint_epoch_21.pth")
+model.load_state_dict(checkpoint['model_state_dict'])
 model.to(device)
 model.eval()  # Set the model to evaluation mode
 # Image preprocessing
@@ -46,7 +48,7 @@ class ImageDataset(Dataset):
         image_tensor = self.transform(image)
         return image_tensor
 
-def run_inference(image_paths, batch_size=256):
+def run_inference(image_paths, batch_size=64):
     dataset = ImageDataset(image_paths, preprocess)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
     all_outputs = []
@@ -54,7 +56,6 @@ def run_inference(image_paths, batch_size=256):
 
     with torch.no_grad():
         for input_tensor in dataloader:
-            print(input_tensor.shape)
             input_tensor = input_tensor.to(device)
             batch_outputs = model.forward(input_tensor)
             all_outputs.append(batch_outputs)
@@ -132,9 +133,11 @@ def run_inference_and_compute_metrics(image_paths, strange_paths,
     image_classes = [extract_class(p) for p in image_paths]
     strange_classes = [extract_class(p) for p in strange_paths]
 
-    # Compute cosine similarities and distances
+    # # Compute cosine similarities and distances
     cosine_similarities = torch.matmul(strange_outputs, outputs.T)  # [num_strange_images, num_images]
     distances = 1 - cosine_similarities  # [num_strange_images, num_images]
+    # Compute Euclidean distances
+    # distances = torch.cdist(strange_outputs, outputs, p=2.0)  # [num_strange_images, num_images]
 
     # Get min distances and indices
     min_distance_values, min_distance_indices = distances.min(dim=1)  # [num_strange_images]

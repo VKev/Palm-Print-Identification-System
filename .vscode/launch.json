@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "Application",
+            "request": "launch",
+            "mainClass": "tienthuan.Application",
+            "projectName": "palm-print-recognization-system",
+            "cwd": "c:\\My_Laptop\\Repo\\Palm-Print-Identification-System\\backend",
+            "env": {
+                "CLOUD_API_KEY":"548484677668783",
+                "CLOUD_NAME":"dvvwi2qhe",
+                "CLOUD_SECRET":"VI687PpLW23zt5NzyYmKQnMuSTs",
+                "DB_PASSWORD":"12345",
+                "DB_URL":"jdbc:postgresql://localhost:5433/PalmPrintRecognitionSystemDB",
+                "DB_USER":"sa",
+                "SECRET_KEY":"0At8mPeL2GSB0wHEsC0xL76Vlw4s5cvzU5puKfmcbLJruW2m7mUq4TtLqfAh9+1+"
+            }
+        }
+    ]
+}

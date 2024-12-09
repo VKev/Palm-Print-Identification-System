@@ -4,4 +4,4 @@ from .loss import *
 from .transform import *
 from .pc_info import *
 from .scheduler import *
-from .loadmodel import *
+# from .loadmodel import *

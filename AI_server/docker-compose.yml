@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mamba_vision:
+    image: vkev25811/mamba
+    container_name: mamba_vision_container
+    command: tail -f /dev/null
+    ports:
+      - "5000:5000"
+    volumes:
+      - type: bind
+        source: C:\My_Laptop\Repo\Palm-Print-Identification-System
+        target: /app
+    networks:
+      - elastic_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: 15g
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.16.1
+    container_name: es01
+    ports:
+      - "9200:9200"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    environment:
+      - discovery.type=single-node
+    networks:
+      - elastic_network
+
+networks:
+  elastic_network:
+    driver: bridge
+
+volumes:
+  elasticsearch_data:
+    driver: local

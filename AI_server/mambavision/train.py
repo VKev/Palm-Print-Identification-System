@@ -70,7 +70,8 @@ test_batch = args.test_batch
 persistent_workers=True
 pin_memory=True
 # continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_T_latest_19.pth"
-continue_checkpoint = r"checkpoints/checkpoint_epoch_30.pth"
+continue_checkpoint = r"checkpoints/checkpoint_epoch_72.pth"
+# continue_checkpoint = r""
 wandb.init(
     # set the wandb project where this run will be logged
     project="mamba-vision-palm-print",
@@ -82,17 +83,17 @@ wandb.init(
 )
 
 if test:
-    val_batch_size = 16
-    test_batch = 20
-    batch_size = 16
+    val_batch_size = 4
+    test_batch = 4
+    batch_size = 4
     persistent_workers=False
     pin_memory=False
-    n_negatives = 24
+    n_negatives = 26
     num_label_negative = 16
 
     # train_size = 1000
     num_workers = 4
-    test_negatives = 24
+    test_negatives = 26
     test_negatives_class = 16
 
 image_paths, labels = load_images_from_folders(train_image_folder)
@@ -112,12 +113,13 @@ if not continue_checkpoint:
     for param in model.parameters():
         param.requires_grad = False
 
-    model.head = CustomHead(in_channels=640)
-    for param in model.head.parameters():
-        param.requires_grad = True
-    for name, param in model.head.named_parameters():
-        print(f"Parameter: {name}, requires_grad: {param.requires_grad}")
-    # add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
+    # model.head = CustomHead(in_channels=640)
+    # for param in model.head.parameters():
+    #     param.requires_grad = True
+    # for name, param in model.head.named_parameters():
+    #     print(f"Parameter: {name}, requires_grad: {param.requires_grad}")
+    
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
     model.to(device)
     optimizer = optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
@@ -131,21 +133,23 @@ else:
     print("Loading")
 
     model =  mamba_vision_T(pretrained=False).to(device)
-    model.head = CustomHead(in_channels=640)
-    # add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj" ])
+    # model.head = CustomHead(in_channels=640)
+    add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj", "levels.2.blocks.7.mlp.fc2", "levels.2.blocks.7.mlp.fc1", "levels.2.blocks.7.mixer.proj", "levels.2.blocks.7.mixer.qkv"])
     checkpoint = torch.load(continue_checkpoint)
     model.load_state_dict(checkpoint['model_state_dict'])
+
     start_epoch = checkpoint['epoch']
     loss = checkpoint['loss']
+
     for param in model.parameters():
         param.requires_grad = False
-    # for name, param in model.named_parameters():
-    #     if "lora_" in name:
-    #         param.requires_grad = True
-    for param in model.head.parameters():
-        param.requires_grad = True
-    for name, param in model.head.named_parameters():
-        print(f"Parameter: {name}, requires_grad: {param.requires_grad}")
+    for name, param in model.named_parameters():
+        if "lora_" in name:
+            param.requires_grad = True
+    # for param in model.head.parameters():
+    #     param.requires_grad = True
+    # for name, param in model.head.named_parameters():
+    #     print(f"Parameter: {name}, requires_grad: {param.requires_grad}")
     model.to(device)            
 
     optimizer = optim.AdamW(
@@ -290,7 +294,7 @@ def evaluate(model, data_loader, device):
         ):
             all_images = all_images.to(device)
 
-            all_features = model.forward(all_images)
+            all_features = model.forward_features(all_images)
 
             anchors_features = all_features[:num_anchors]
             positives_features = all_features[num_anchors : 2 * num_anchors]
@@ -316,6 +320,8 @@ def evaluate(model, data_loader, device):
 if __name__ == "__main__":
     try:
         # val_loss = evaluate(model, val_loader, device)
+        # test_loss = evaluate(model, test_loader, device)
+        # print(f"Test Loss: {test_loss}")
         if not continue_checkpoint:
             test_loss = evaluate(model, test_loader, device)
             print(f"Test Loss: {test_loss}")
@@ -337,7 +343,7 @@ if __name__ == "__main__":
                 # print("TEST")
                 all_images = all_images.to(device)
 
-                all_features = model.forward(all_images)
+                all_features = model.forward_features(all_images)
 
                 anchors_features = all_features[:num_anchors]
                 positives_features = all_features[num_anchors : 2 * num_anchors]

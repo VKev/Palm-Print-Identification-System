@@ -7,7 +7,8 @@ from PIL import Image
 import numpy as np
 from bson import ObjectId
 import io
-from mambavision import load_model, inference, transform
+from elastic_search_palmprint import *
+from mambavision import inference, transform
 import torch
 from depthanythingv2 import background_cut
 from roiextraction import roicut, tensor_to_image
@@ -72,7 +73,7 @@ def background_cutt():
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
-
+    # print(data)
     images = decode_base64_images(base64_images)
     background_cut_images = background_cut(images, 0.7)
     
@@ -125,14 +126,104 @@ def register():
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
+    student_id = data['id']
     images = decode_base64_images_for_inference(base64_images)
     batch = torch.stack([transform(img) for img in images])
     with torch.no_grad():
         result = inference(batch.to(torch.float32).to("cuda"))
     # euclidean_distances = calculate_pairwise_euclidean_distance(result)
+    bulk_index_vectors(es,index_name='palm-print-index', student_id=student_id, feature_vectors= result.cpu().numpy().tolist())
     return jsonify({"feature_vectors": result.cpu().numpy().tolist()}), 200
     # return jsonify({"feature_vectors": euclidean_distances.cpu().numpy().tolist()}), 200
 
-if __name__ == "__main__": 
+@app.route("/ai/recognize/cosine", methods=["POST"])
+def search():
+    current_directory = os.path.dirname(os.path.abspath(__file__)) 
+    save_path = os.path.join(current_directory, 'processed_image.png')
 
+    data = request.json
+    if 'images' not in data:
+        return jsonify({"error": "Images not found in request"}), 400
+    base64_images = data['images']
+    images = decode_base64_images(base64_images)
+    background_cut_images = background_cut(images, 0.7)
+    background_cut_images = [img.convert('RGB') for img in background_cut_images]
+    roi_cut_images = roicut(background_cut_images)
+    darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
+    final_images = preprocess.enhance_pilimages(darken_images, 1.5)
+    final_images = [img.convert('RGB') for img in final_images]
+    batch = torch.stack([transform(img) for img in final_images])
+    with torch.no_grad():
+        result = inference(batch.to(torch.float32).to("cuda"))
+    top1 = bulk_cosine_similarity_search(es, "palm-print-index", result.cpu().numpy().tolist())
+    
+    return jsonify(verify_palm_print(top1))
+
+
+@app.route("/ai/recognize/cosine", methods=["POST"])
+def cosine_search():
+    current_directory = os.path.dirname(os.path.abspath(__file__)) 
+    save_path = os.path.join(current_directory, 'processed_image.png')
+
+    data = request.json
+    if 'images' not in data:
+        return jsonify({"error": "Images not found in request"}), 400
+    base64_images = data['images']
+    images = decode_base64_images(base64_images)
+    background_cut_images = background_cut(images, 0.7)
+    background_cut_images = [img.convert('RGB') for img in background_cut_images]
+    roi_cut_images = roicut(background_cut_images)
+    darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
+    final_images = preprocess.enhance_pilimages(darken_images, 1.5)
+    final_images = [img.convert('RGB') for img in final_images]
+    batch = torch.stack([transform(img) for img in final_images])
+    with torch.no_grad():
+        result = inference(batch.to(torch.float32).to("cuda"))
+    top1 = bulk_cosine_similarity_search(es, "palm-print-index", result.cpu().numpy().tolist())
+    
+    return jsonify(verify_palm_print(top1))
+
+
+@app.route("/ai/recognize/euclidean", methods=["POST"])
+def euclidean_search():
+    current_directory = os.path.dirname(os.path.abspath(__file__)) 
+    save_path = os.path.join(current_directory, 'processed_image.png')
+
+    data = request.json
+    if 'images' not in data:
+        return jsonify({"error": "Images not found in request"}), 400
+    base64_images = data['images']
+    images = decode_base64_images(base64_images)
+    background_cut_images = background_cut(images, 0.7)
+    background_cut_images = [img.convert('RGB') for img in background_cut_images]
+    roi_cut_images = roicut(background_cut_images)
+    darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
+    final_images = preprocess.enhance_pilimages(darken_images, 1.5)
+    final_images = [img.convert('RGB') for img in final_images]
+    batch = torch.stack([transform(img) for img in final_images])
+    with torch.no_grad():
+        result = inference(batch.to(torch.float32).to("cuda"))
+    top1 = bulk_euclidean_similarity_search(es, "palm-print-index", result.cpu().numpy().tolist())
+    
+    return jsonify(verify_palm_print(top1))
+
+@app.route("/ai/database/delete-all", methods=["GET"])
+def delete_all():
+    delete_all_documents_in_index(es, "palm-print-index")
+    return jsonify({'message': 'delete success'})
+
+@app.route("/ai/database/list-all", methods=["GET"])
+def list_all():
+    result = list_documents_in_index(es, "palm-print-index",debug=False)
+    return jsonify(result)
+
+
+@app.route("/hello-world", methods=["GET"])
+def hello_world():
+    return jsonify("hello world")
+
+if __name__ == "__main__": 
+    create_palm_print_index()
+    # delete_all_documents_in_index(es, "palm-print-index")
+    # list_documents_in_index(es , "palm-print-index")
     app.run(host="0.0.0.0", port=5000, debug=True)
