@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tienthuan.service.def.IStaffService;
 
+import java.io.File;
+import java.util.Collection;
+
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -77,12 +80,14 @@ public class StaffController {
      * @param videoFile Video file
      * @return Collections of cut background images
      */
-    @PostMapping("/upload-palm-print-video")
+        @PostMapping(value = "/upload-palm-print-video/{studentCode}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadPalmPrintVideo(
+            @PathVariable("studentCode") String studentCode,
             @Parameter(description = "Video file", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
-            @RequestParam("video") MultipartFile videoFile
+            @RequestParam("video")
+            MultipartFile videoFile
     ) {
-        return staffService.uploadPalmPrintVideo(videoFile);
+        return staffService.uploadPalmPrintVideo(studentCode, videoFile);
     }
 
 
@@ -94,6 +99,14 @@ public class StaffController {
         return staffService.recognizePalmPrint(videoFile);
     }
 
+    @PostMapping("/test-recognition-palm-print")
+    public ResponseEntity<?> testRecognitionPalmPrint(
+            @Parameter(description = "Image files", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
+            @RequestParam("images") MultipartFile[] files
+    ) {
+            return staffService.recognizePalmPrint(files);
+    }
+
     @GetMapping("/test-ai")
     public ResponseEntity<?> testAI() {
         ResponseEntity<?> response = staffService.testAI();
@@ -102,16 +115,5 @@ public class StaffController {
     }
 
 
-    /**
-     * API test extract uploaded video
-     */
-//    @PostMapping(value = "/upload-video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    public ResponseEntity<Collection<File>> uploadVideo(
-//            @Parameter(description = "Video file", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
-//            @RequestParam("video")
-//            MultipartFile file
-//    )  {
-//        return new ResponseEntity<>(videoUtil.extractImages(file), HttpStatus.OK);
-//    }
 
 }

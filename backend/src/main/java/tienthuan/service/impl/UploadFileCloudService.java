@@ -36,9 +36,24 @@ public class UploadFileCloudService implements IUploadFileCloudService {
             return fileUrl;
         }
         catch (IOException ioException) {
-            log.info("Exception at upload file to cloud: " + ioException.getMessage());
+            log.error("Exception at upload file to cloud: " + ioException.getMessage());
         }
-        return null;
+        return "";
+    }
+
+    public String uploadFile(File file) {
+        try {
+            String publicValue = this.generatePublicValue(file.getName());
+            String fileExtension = this.getFileName(file.getName())[1];
+            cloudinary.uploader().upload(file, ObjectUtils.asMap("public_id", publicValue));
+            String fileUrl = cloudinary.url().generate(StringUtils.join(publicValue, ".", fileExtension));
+            cleanDisk(file);
+            return fileUrl;
+        }
+        catch (IOException ioException) {
+            log.error("Exception at upload file to cloud: " + ioException.getMessage());
+        }
+        return "";
     }
 
     private File convertFile(MultipartFile file)  throws IOException {
