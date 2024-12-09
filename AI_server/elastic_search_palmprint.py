@@ -270,7 +270,8 @@ def verify_palm_print(results):
         'occurrence_count': id_counts[most_common_id],
         'average_similarity_score': avg_score,
         'average_occurrence_score': id_counts[most_common_id]/id_counts.total(),
-        'accept': (avg_score + id_counts[most_common_id]/id_counts.total())/2 > 0.698555148144563
+        'accept': (avg_score + id_counts[most_common_id]/id_counts.total())/2 > 0.698555148144563,
+        'score': (avg_score + id_counts[most_common_id]/id_counts.total())/2
     }
 
 if __name__ == "__main__":
