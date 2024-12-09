@@ -33,12 +33,13 @@ public class StaffController {
      * @param files Image files
      * @return Collections of cut background images
      */
-    @PostMapping("/upload-palm-print-images")
+    @PostMapping("/upload-palm-print-images/{studentCode}")
     public ResponseEntity<?> uploadPalmPrintImages(
+            @PathVariable("studentCode") String studentCode,
             @Parameter(description = "Image files", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("images") MultipartFile[] files
     ) {
-        return staffService.uploadPalmPrintImages(files);
+        return staffService.uploadPalmPrintImages(studentCode, files);
     }
 
     /**

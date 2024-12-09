@@ -3,12 +3,11 @@ package tienthuan.service.ai.api;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpMethod;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.*;
 
 @Slf4j
@@ -37,6 +36,13 @@ public class PalmPrintRecognitionAiAPI {
         public Collection<byte[]> frames;
     }
 
+    @AllArgsConstructor
+    private static class FramesRequestMultipart {
+        @JsonProperty("images")
+        public Collection<String> frames;
+    }
+
+
 
     public ResponseEntity<?> testRequestAiServer() {
         RestTemplate restTemplate = new RestTemplate();
@@ -51,8 +57,16 @@ public class PalmPrintRecognitionAiAPI {
 
     public ResponseEntity<?> registerBackgroundCut(Collection<byte[]> frames) {
         String url = BASE_URL + "/ai/register/backgroundcut";
-        return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
+        ResponseEntity<?> response = this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
+        return response;
     }
+
+//    public ResponseEntity<?> registerBackgroundCutV2(Collection<String> base64Images) {
+//        String url = BASE_URL + "/ai/register/backgroundcut";
+//        RestTemplate restTemplate = new RestTemplate();
+//        HttpEntity<Object> requestEntity = new HttpEntity<>(new FramesRequestMultipart(base64Images), headers);
+//        return restTemplate.exchange(url, HttpMethod.POST, requestEntity, Object.class);
+//    }
 
 
     public ResponseEntity<?> registerRoiCut(Collection<byte[]> frames) {
