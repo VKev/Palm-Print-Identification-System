@@ -7,7 +7,8 @@ import { toast } from "react-toastify";
 import useAxios from "../../utils/useAxios";
 import API from "../../config/API";
 import HttpStatus from "../../config/HttpStatus";
-import { ImageFile, StudentValidationResponse } from "../../models/Student";
+import { FileType, ImageFile, ImagesResponse, StudentValidationResponse } from "../../models/Student";
+
 
 export default function RegisterPalmPrint() {
 
@@ -16,8 +17,9 @@ export default function RegisterPalmPrint() {
     const [studentValidationResponse, setStudentCodeResponse] = useState<StudentValidationResponse | null>(null);
     const [cameraOn, setCameraOn] = useState(false);
     const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
-    const [base64Images, setBase64Images] = useState<string[]>([]);
+    // const [imageResponse, setImageResponse] = useState<ImagesResponse | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [registerPhase, setRegisterPhase] = useState<number>(1);
 
     const toggleCamera = () => setCameraOn(!cameraOn);
     
@@ -30,8 +32,7 @@ export default function RegisterPalmPrint() {
                     setStudentCodeResponse(response.data);
                     toast.success(response.data.message);
                 }
-                console.log(response.data);
-                
+                //console.log(response.data);
             }
             else {
                 setStudentCodeResponse(null);
@@ -52,14 +53,6 @@ export default function RegisterPalmPrint() {
         
     }
 
-    const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files) {
-            const filesArray = Array.from(event.target.files);
-            const imageFiles = filesArray.map(file => ({ file, isSelected: false }));
-            setSelectedImages(imageFiles);
-        }
-    };
-
     // Send selected images to server
     const sendImagesToServer = async () => {
         setIsLoading(true);
@@ -67,7 +60,7 @@ export default function RegisterPalmPrint() {
         const formData = new FormData();
         let files: File[] = [];
         selectedImages.forEach((image) => {
-            if(!image.isSelected) {
+            if(!image.isSelected && image.file) {
                 // formData.append('images', image.file);
                 files.push(image.file);
             }
@@ -75,13 +68,15 @@ export default function RegisterPalmPrint() {
         
         files.forEach(file => formData.append('images', file));
         try {
-            const response = await api.get(API.Staff.TEST);
+            const response = await api.post(API.Staff.UPLOAD_PALM_PRINT_FRAME + studentCode, formData);
             if (response.status === HttpStatus.OK) {
-                console.log(response);
                 toast.success(response.data.message);
-                setBase64Images(response.data);
+                // setImageResponse(response.data);
+                setSelectedImages(response.data.images.map(
+                    (image: string) => ({ file: null, base64: image, isSelected: false, type: FileType.BASE64 }))
+                );
             }
-            console.log(response.data);
+            //console.log(response.data);
         }
         catch (error: any) {
             if (error.response.status === HttpStatus.BAD_REQUEST) {
@@ -95,6 +90,18 @@ export default function RegisterPalmPrint() {
             setIsLoading(false);
         }
     }
+
+    const sendBackgroundCutImagesToServer = async () => {
+
+    }
+
+    const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+            const filesArray = Array.from(event.target.files);
+            const imageFiles = filesArray.map(file => ({ file, base64: null, isSelected: false, type: FileType.FILE }));
+            setSelectedImages(imageFiles);
+        }
+    };
 
     function handleImageClick(image: ImageFile): void {
         const newSelectedImages = selectedImages.map((img) => {
@@ -169,24 +176,19 @@ export default function RegisterPalmPrint() {
                                         selectedImages.map((image, index) => (
                                             <img
                                                 key={index}
-                                                src={URL.createObjectURL(image.file)}
+                                                src={
+                                                    image.type === FileType.FILE && image.file ? 
+                                                    URL.createObjectURL(image.file) : 
+                                                    "data:image/png;base64, " + image.base64
+                                                }
                                                 alt={`Selected ${index}`}
                                                 className={`w-40 h-auto rounded-lg ${image.isSelected ? 'border-4 border-red-500' : ''}`}
                                                 onClick={() => handleImageClick(image)}
                                             />
                                         ))
                                     }
-                                    {
-                                        base64Images.map((image, index) => (
-                                            <img
-                                                key={index}
-                                                src={"data:image/png;base64, " + image}
-                                                alt={`Selected ${index}`}
-                                                className={`w-40 h-auto rounded-lg`}
-                                            />
-                                        ))
-                                    }
                                 </div>
+
                                 <div>
                                     <button 
                                         onClick={sendImagesToServer}
@@ -195,6 +197,7 @@ export default function RegisterPalmPrint() {
                                         {isLoading ? 'Loading...' : 'Confirm to next step'}
                                     </button>
                                 </div>
+
                             </div>
                         </div>
                     </>

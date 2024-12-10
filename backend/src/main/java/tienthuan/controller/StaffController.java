@@ -34,12 +34,14 @@ public class StaffController {
      * @return Collections of cut background images
      */
     @PostMapping("/upload-palm-print-images/{studentCode}")
-    public ResponseEntity<?> uploadPalmPrintImages(
+    public Object uploadPalmPrintImages(
             @PathVariable("studentCode") String studentCode,
             @Parameter(description = "Image files", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("images") MultipartFile[] files
     ) {
-        return staffService.uploadPalmPrintImages(studentCode, files);
+        ResponseEntity<?> response = staffService.uploadPalmPrintImages(studentCode, files);
+        log.info("Response: {}", response);
+        return response.getBody();
     }
 
     /**
@@ -104,11 +106,11 @@ public class StaffController {
             return staffService.recognizePalmPrint(files);
     }
 
-    @GetMapping("/test-ai")
-    public ResponseEntity<?> testAI() {
+    @GetMapping(value = "/test-ai", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String testAI() {
         ResponseEntity<?> response = staffService.testAI();
         log.info("Response: {}", response);
-        return response;
+        return (String) response.getBody();
     }
 
 

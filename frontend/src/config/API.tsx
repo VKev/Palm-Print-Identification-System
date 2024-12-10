@@ -11,6 +11,7 @@ const API = {
     Staff: {
         VALIDATE_STUDENT_CODE: '/api/staff/validate-student-code/',
         UPLOAD_PALM_PRINT_FRAME: '/api/staff/upload-palm-print-images/',
+        UPLOAD_BACKGROUND_CUT_FRAME: '/api/staff/upload-filter-background-cut-images',
         TEST: '/api/staff/test-ai',
     }
 
