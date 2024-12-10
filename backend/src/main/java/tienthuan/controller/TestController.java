@@ -45,7 +45,7 @@ public class TestController {
     }
 
     @PostMapping("/create-student")
-    public ResponseEntity<?> createStudent(TestStudentRequest studentRequest) {
+    public ResponseEntity<?> createStudent(@RequestBody TestStudentRequest studentRequest) {
         try {
             studentRepository.save(
                     Student.builder()

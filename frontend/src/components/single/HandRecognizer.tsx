@@ -5,16 +5,25 @@ import { toast } from "react-toastify";
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import LoadEffect from './LoadEffect';
 import DeviceNameIdentifier from "./DeviceNameIdentifier";
+import useAxios from "../../utils/useAxios";
+import API from "../../config/API";
+import { CameraMode } from "../../models/PalmPrint";
+import HttpStatus from "../../config/HttpStatus";
+import { v4 as uuidv4 } from 'uuid';
 
 // const DEFAULT_MP4_NAME = "recorded-video.mp4";
 
-type CameraSize = {
+type Props = {
     width: string;
     maxWidth: string;
+    cameraMode: string;
+    studentCode?: string | null;
 }
 
-export default function HandRecognizer(cameraSize: CameraSize) {
 
+export default function HandRecognizer(cameraProps: Props) {
+
+    const api = useAxios();
     const [recording] = useState<boolean>(true);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [handDetected, setHandDetected] = useState<boolean>(false);
@@ -41,6 +50,28 @@ export default function HandRecognizer(cameraSize: CameraSize) {
         loadHandposeModel();
     }, []);
 
+    const sendVideoToServer = async (videoBlob: Blob, studentCode: string) => {
+        const urlServer = cameraProps.cameraMode === CameraMode.REGISTRATION ? 
+            API.Staff.UPLOAD_PALM_PRINT_VIDEO_REGISTRATION + studentCode : 
+            API.Staff.UPLOAD_PALM_PRINT_VIDEO_RECOGNITION;
+
+        const formData = new FormData();
+        formData.append('video', videoBlob, uuidv4()+'.mp4');
+
+        try {
+            const response = await api.post(urlServer, formData);
+            if (response.status === HttpStatus.OK) {
+                toast.success('Video uploaded successfully');
+            }
+            else {
+                toast.error('Error uploading video');
+            }
+        } 
+        catch (error: any) {
+            toast.error('Error uploading video:', error);
+        }
+    };
+
     const detectHand = useCallback(async () => {
 
         if (videoRef.current && handposeModelRef.current) {
@@ -58,13 +89,19 @@ export default function HandRecognizer(cameraSize: CameraSize) {
             }
 
             if (handDetectionTime >= 3000) { // 3s
-                mediaRecorderRef.current?.stop();
-                // downloadVideo();
-                setHandDetectionTime(0);
+                if (mediaRecorderRef.current) {
+                    mediaRecorderRef.current.stop();
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            sendVideoToServer(event.data, cameraProps.studentCode || '');
+                        }
+                    };
+                    setHandDetectionTime(0);
+                }
             }
         }
 
-    }, [handDetectionTime]);
+    }, [handDetectionTime, cameraProps.studentCode]);
 
     useEffect(() => {
         startRecording();
@@ -188,7 +225,7 @@ export default function HandRecognizer(cameraSize: CameraSize) {
                             ref={videoRef}
                             autoPlay
                             muted
-                            style={cameraSize}
+                            style={{width: cameraProps.width, maxWidth: cameraProps.maxWidth}}
                         // transform: 'scaleX(-1)' { width: '100%', maxWidth: '700px' }
                         />
                     </div>

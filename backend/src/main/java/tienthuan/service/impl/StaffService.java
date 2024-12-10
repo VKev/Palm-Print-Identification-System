@@ -49,9 +49,9 @@ public class StaffService implements IStaffService {
         }
         else {
             // Compress and save base64 images
-            for (MultipartFile file : files) {
-                savePalmPrintImages(student.get(), file);
-            }
+//            for (MultipartFile file : files) {
+//                savePalmPrintImages(student.get(), file);
+//            }
             return palmPrintRecognitionAiAPI.registerBackgroundCut(convertMultipartFilesToBase64(files));
         }
     }

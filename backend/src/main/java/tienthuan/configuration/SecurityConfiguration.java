@@ -28,19 +28,16 @@ import java.util.List;
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
     private final AuthenticationProvider authenticationProvider;
-
     private final ConstantConfiguration constant;
-
     private final LogoutService logoutService;
-
     private final List<String> ALLOWED_ORIGINS = List.of("http://localhost:3000");
     private final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "DELETE");
     private final List<String> ALLOWED_HEADERS = List.of("*");
     private final Long CORS_MAX_AGE = 3600L;
     private final String CORS_PATTERN = "/**";
-    private final String AUTH_API = "/api/auth/**";
+    private final String[] OPEN_API = {"/api/auth/**", "/api/test/**"};
+
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -51,10 +48,10 @@ public class SecurityConfiguration {
                 )
                 .authorizeHttpRequests(
                         request -> request
-                                .anyRequest()
+                                .requestMatchers(OPEN_API)
                                 .permitAll()
-//                                .anyRequest()
-//                                .authenticated()
+                                .anyRequest()
+                                .authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)

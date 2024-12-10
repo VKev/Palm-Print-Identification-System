@@ -7,7 +7,10 @@ import { toast } from "react-toastify";
 import useAxios from "../../utils/useAxios";
 import API from "../../config/API";
 import HttpStatus from "../../config/HttpStatus";
-import { FileType, ImageFile, ImagesResponse, StudentValidationResponse } from "../../models/Student";
+import { FileType, ImageFile, StudentValidationResponse } from "../../models/Student";
+import { CameraMode, RegistrationPhases } from "../../models/PalmPrint";
+import { base64ToFile } from "../../utils/fileUtil";
+import { v4 as uuidv4 } from 'uuid';
 
 
 export default function RegisterPalmPrint() {
@@ -17,9 +20,8 @@ export default function RegisterPalmPrint() {
     const [studentValidationResponse, setStudentCodeResponse] = useState<StudentValidationResponse | null>(null);
     const [cameraOn, setCameraOn] = useState(false);
     const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
-    // const [imageResponse, setImageResponse] = useState<ImagesResponse | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [registerPhase, setRegisterPhase] = useState<number>(1);
+    const [registerPhase, setRegisterPhase] = useState<number>(RegistrationPhases.BACKGROUND_CUT);
 
     const toggleCamera = () => setCameraOn(!cameraOn);
     
@@ -55,13 +57,29 @@ export default function RegisterPalmPrint() {
 
     // Send selected images to server
     const sendImagesToServer = async () => {
+        switch (registerPhase) {
+            case RegistrationPhases.BACKGROUND_CUT:
+                sendFramesToCutBackground();
+                break;
+            case RegistrationPhases.ROI_CUT:
+                sendBackgroundCutImagesToRoiCut();
+                break;
+            case RegistrationPhases.REGISTER_INFERENCE:
+                registerInference();
+                break;
+            default:
+                toast.error('Invalid registration phase');
+                break;
+        }
+    }
+
+    const sendFramesToCutBackground = async () => {
         setIsLoading(true);
         if (selectedImages.length === 0) return;
         const formData = new FormData();
-        let files: File[] = [];
+        const files: File[] = [];
         selectedImages.forEach((image) => {
             if(!image.isSelected && image.file) {
-                // formData.append('images', image.file);
                 files.push(image.file);
             }
         });
@@ -71,19 +89,18 @@ export default function RegisterPalmPrint() {
             const response = await api.post(API.Staff.UPLOAD_PALM_PRINT_FRAME + studentCode, formData);
             if (response.status === HttpStatus.OK) {
                 toast.success(response.data.message);
-                // setImageResponse(response.data);
                 setSelectedImages(response.data.images.map(
                     (image: string) => ({ file: null, base64: image, isSelected: false, type: FileType.BASE64 }))
                 );
+                setRegisterPhase(RegistrationPhases.ROI_CUT);
             }
-            //console.log(response.data);
         }
         catch (error: any) {
             if (error.response.status === HttpStatus.BAD_REQUEST) {
                 toast.error(error.response.data.message);
             }
             else {
-                toast.error('Something went wrong! Try again later.');
+                toast.error('Something went wrong while cutting background! Try again later.');
             }
         }
         finally {
@@ -91,8 +108,70 @@ export default function RegisterPalmPrint() {
         }
     }
 
-    const sendBackgroundCutImagesToServer = async () => {
+    const sendBackgroundCutImagesToRoiCut = async () => {
+        setIsLoading(true);
+        const formData = new FormData();
+        const files: File[] = [];
+        selectedImages.forEach((image) => {
+            if(!image.isSelected && image.base64) {
+                files.push(base64ToFile(image.base64, uuidv4()+'.png'));
+            }
+        });
 
+        files.forEach(file => formData.append('images', file));
+        try {
+            const response = await api.post(API.Staff.UPLOAD_BACKGROUND_CUT_FRAME, formData);
+            if (response.status === HttpStatus.OK) {
+                toast.success(response.data.message);
+                setSelectedImages(response.data.images.map(
+                    (image: string) => ({ file: null, base64: image, isSelected: false, type: FileType.BASE64 }))
+                );
+                setRegisterPhase(RegistrationPhases.REGISTER_INFERENCE);
+            }
+        }
+        catch (error: any) {
+            if (error.response.status === HttpStatus.BAD_REQUEST) {
+                toast.error(error.response.data.message);
+            }
+            else {
+                toast.error('Something went wrong while cutting roi! Try again later.');
+            }
+        }
+        finally {
+            setIsLoading(false);
+        }
+    }
+
+    const registerInference = async () => {
+        setIsLoading(true);
+        const formData = new FormData();
+        const files: File[] = [];
+        selectedImages.forEach((image) => {
+            if(!image.isSelected && image.base64) {
+                files.push(base64ToFile(image.base64, uuidv4()+'.png'));
+            }
+        });
+
+        files.forEach(file => formData.append('images', file));
+        try {
+            const response = await api.post(API.Staff.REGISTER_INFERENCE + studentCode, formData);
+            if (response.status === HttpStatus.OK) {
+                //toast.success(response.data);
+                console.log(response.data);
+                setRegisterPhase(RegistrationPhases.BACKGROUND_CUT);
+            }
+        }
+        catch (error: any) {
+            if (error.response.status === HttpStatus.BAD_REQUEST) {
+                toast.error(error.response.data.message);
+            }
+            else {
+                toast.error('Something went wrong while register inferences! Try again later.');
+            }
+        }
+        finally {
+            setIsLoading(false);
+        }
     }
 
     const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,7 +213,11 @@ export default function RegisterPalmPrint() {
                     </div>
                 </div>
                 {
-                    cameraOn && <HandRecognizer width={"200%"} maxWidth={"1000px"} />
+                    cameraOn && <HandRecognizer 
+                        width={"200%"} maxWidth={"1000px"} 
+                        cameraMode={CameraMode.REGISTRATION} 
+                        studentCode={studentCode}
+                    />
                 }
 
                 {
@@ -194,7 +277,7 @@ export default function RegisterPalmPrint() {
                                         onClick={sendImagesToServer}
                                         className="ml-3 text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2"
                                         disabled={isLoading}>
-                                        {isLoading ? 'Loading...' : 'Confirm to next step'}
+                                        {isLoading ? 'Loading...' : 'Confirm to next step ('+(registerPhase-1)+'/3)'}
                                     </button>
                                 </div>
 

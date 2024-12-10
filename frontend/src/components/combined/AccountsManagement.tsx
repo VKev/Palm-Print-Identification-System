@@ -1,33 +1,48 @@
-import { useState } from 'react';
-import { Modal } from '@mui/material';
+import { useEffect, useState } from 'react';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
-// import AddIcon from '@mui/icons-material/Add';
-// import RemoveIcon from '@mui/icons-material/Remove';
-
-const sampleData = Array.from({ length: 100 }, (_, index) => ({
-  id: index + 1,
-  username: `user${index + 1}`,
-  fullname: `User Fullname ${index + 1}`,
-  role: 'Staff',
-  status: index % 2 === 0 ? 'Active' : 'Inactive',
-}));
+import { Account } from '../../models/User';
+import useAxios from '../../utils/useAxios';
+import API from '../../config/API';
+import { toast } from 'react-toastify';
+import AccountCreationModal from '../single/AccountCreationModal';
 
 export default function AccountsManagement() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [open, setOpen] = useState(false);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const api = useAxios();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]); 
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await api.get(API.Admin.GET_STAFF_ACCOUNTS);
+      if (response.status === 200) {
+        setAccounts(response.data);
+      } 
+      else {
+        toast.error('Something went wrong during fetch accounts!');
+      }
+    }
+    fetchData().catch(console.error);
+  }, [])
+
+  const handleOpen = () => setIsModalOpen(true);
+  const handleClose = () => setIsModalOpen(false);
+
+  const handleAccountCreated = (newAccount: Account) => {
+    setAccounts((prevAccounts) => [...prevAccounts, newAccount]);
+  };
 
   const accountsPerPage = 15;
   const indexOfLastAccount = currentPage * accountsPerPage;
   const indexOfFirstAccount = indexOfLastAccount - accountsPerPage;
-  const currentAccounts = sampleData.slice(indexOfFirstAccount, indexOfLastAccount);
-  const totalPages = Math.ceil(sampleData.length / accountsPerPage);
+  const currentAccounts = accounts.slice(indexOfFirstAccount, indexOfLastAccount);
+  const totalPages = Math.ceil(accounts.length / accountsPerPage);
 
+  
   return (
     <div>
       <div className="mt-3 text-4xl text-center font-medium">Manage Staff Accounts</div>
@@ -73,13 +88,24 @@ export default function AccountsManagement() {
             </tr>
           </thead>
           <tbody>
-            {currentAccounts.map((account) => (
+            {
+            currentAccounts.map((account) => (
               <tr key={account.id}>
                 <td className="py-2 px-4 border-b text-center">{account.id}</td>
                 <td className="py-2 px-4 border-b text-center">{account.username}</td>
                 <td className="py-2 px-4 border-b text-center">{account.fullname}</td>
                 <td className="py-2 px-4 border-b text-center">{account.role}</td>
-                <td className="py-2 px-4 border-b text-center">{account.status}</td>
+                <td className="py-2 px-4 border-b text-center">
+                  {
+                    account.isEnable ?
+                    <span className="bg-green-100 text-green-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-300">
+                      Active
+                    </span> :
+                    <span className="bg-red-100 text-red-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-red-900 dark:text-red-300">
+                      Disable
+                    </span>
+                  }
+                </td>
                 <td className="py-2 px-4 border-b text-center">
                   <button title='Edit' className='text-sm text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg px-3 py-1.5 text-center me-2'>
                     <EditIcon fontSize='inherit'/>
@@ -89,7 +115,8 @@ export default function AccountsManagement() {
                   </button>
                 </td>
               </tr>
-            ))}
+            ))
+            }
           </tbody>
         </table>
       </div>
@@ -112,70 +139,8 @@ export default function AccountsManagement() {
         </button>
       </div>
 
-      <Modal open={open} onClose={handleClose} aria-labelledby="modal-title" aria-describedby="modal-description">
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-auto">
-            <div id="modal-title" className="text-2xl font-semibold mb-4">
-              Create new staff
-            </div>
-            <hr className='mb-3' />
+      <AccountCreationModal open={isModalOpen} handleClose={handleClose} onAccountCreated={handleAccountCreated} />
 
-            <div id="modal-description" className="mb-4">
-
-              <div className="py-4">
-                <span className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Username</span>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500"
-                />
-              </div>
-
-              <div className="py-4">
-                <span className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</span>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500"
-                />
-              </div>
-
-              <div className="py-4">
-                <span className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Repeat password</span>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500"
-                />
-              </div>
-
-              <div className="py-4">
-                <span className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Fullname</span>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500"
-                />
-              </div>
-
-              <div className="py-4">
-                <label htmlFor="countries" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select role</label>
-                <select id="countries" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-                  <option selected value="STAFF">Staff</option>
-                </select>
-              </div>
-
-            </div>
-
-            <hr className='mb-3' />
-            <button onClick={handleClose} className="rounded-md bg-green-500 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-green-600 focus:shadow-none active:bg-green-600 hover:bg-green-600 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none mr-3"
-            >
-              Save
-            </button>
-            <button onClick={handleClose} className='text-white bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2'
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };
-

@@ -20,7 +20,7 @@ public class UserMapper {
                 .fullname(registerRequest.fullname())
                 .password(passwordEncoder.encode(registerRequest.password()))
                 .isEnable(Boolean.TRUE)
-                .role(Role.ADMIN)
+                .role(Role.STAFF)
                 .build();
     }
 
@@ -30,6 +30,7 @@ public class UserMapper {
                 .username(user.getUsername())
                 .fullname(user.getFullname())
                 .role(user.getRole().name())
+                .isEnable(user.isEnable())
                 .build();
     }
 

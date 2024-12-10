@@ -40,7 +40,6 @@ public class StaffController {
             @RequestParam("images") MultipartFile[] files
     ) {
         ResponseEntity<?> response = staffService.uploadPalmPrintImages(studentCode, files);
-        log.info("Response: {}", response);
         return response.getBody();
     }
 
@@ -50,11 +49,11 @@ public class StaffController {
      * @return Collection of roi cut images
      */
     @PostMapping("/upload-filter-background-cut-images")
-    public ResponseEntity<?> uploadFilterBackgroundCutImages(
+    public Object uploadFilterBackgroundCutImages(
             @Parameter(description = "Image files", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("images") MultipartFile[] files
     ) {
-        return staffService.uploadFilterBackgroundCutImages(files);
+        return staffService.uploadFilterBackgroundCutImages(files).getBody();
     }
 
     /**
@@ -64,12 +63,12 @@ public class StaffController {
      * @return result of registration
      */
     @PostMapping("/register-palm-print/{studentCode}")
-    public ResponseEntity<?> registerInference(
+    public Object registerInference(
             @PathVariable("studentCode") String studentCode,
             @Parameter(description = "Image files", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("images") MultipartFile[] files
     ) {
-        return staffService.registerInference(studentCode, files);
+        return staffService.registerInference(studentCode, files).getBody();
     }
 
     // Register by upload video - 3 phases
@@ -79,7 +78,7 @@ public class StaffController {
      * @param videoFile Video file
      * @return Collections of cut background images
      */
-        @PostMapping(value = "/upload-palm-print-video/{studentCode}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/upload-palm-print-video/registration/{studentCode}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadPalmPrintVideo(
             @PathVariable("studentCode") String studentCode,
             @Parameter(description = "Video file", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
@@ -99,11 +98,11 @@ public class StaffController {
     }
 
     @PostMapping("/test-recognition-palm-print")
-    public ResponseEntity<?> testRecognitionPalmPrint(
+    public Object testRecognitionPalmPrint(
             @Parameter(description = "Image files", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("images") MultipartFile[] files
     ) {
-            return staffService.recognizePalmPrint(files);
+            return staffService.recognizePalmPrint(files).getBody();
     }
 
     @GetMapping(value = "/test-ai", produces = MediaType.APPLICATION_JSON_VALUE)

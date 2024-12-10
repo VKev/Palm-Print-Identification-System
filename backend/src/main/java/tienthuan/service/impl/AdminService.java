@@ -1,5 +1,7 @@
 package tienthuan.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import tienthuan.repository.UserRepository;
 import tienthuan.service.def.IAdminService;
 
 import java.util.Collection;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +33,7 @@ public class AdminService implements IAdminService {
 
     @Override
     public ResponseEntity<Collection<UserResponse>> getAllStaffAccounts() {
-        Collection<UserResponse> staffAccounts = userRepository.findAllByRole(Role.STAFF.name()).stream().map(
+        List<UserResponse> staffAccounts = userRepository.findAllByRole(Role.STAFF).stream().map(
                 userMapper::toResponse
         ).toList();
         return new ResponseEntity<>(staffAccounts, HttpStatus.OK);
@@ -48,8 +51,12 @@ public class AdminService implements IAdminService {
     public ResponseEntity<?> registerStaffAccount(RegisterRequest registerRequest) {
         try {
             User user = userMapper.toEntity(registerRequest);
-            userRepository.save(user);
-            return new ResponseEntity<>(new MessageResponse("Create staff account successfully"), HttpStatus.OK);
+            User createdUser = userRepository.save(user);
+            return new ResponseEntity<>(new AccountCreationResponse(
+                    userMapper.toResponse(createdUser),
+                    "Create account successfully!"),
+                    HttpStatus.OK
+            );
         }
         catch (Exception exception) {
             return new ResponseEntity<>(new ErrorResponse("Some error occur when creating a account!"), HttpStatus.BAD_REQUEST);

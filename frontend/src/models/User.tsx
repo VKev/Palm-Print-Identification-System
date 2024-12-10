@@ -21,3 +21,11 @@ export type AuthTokens = {
     access_token: string,
     refresh_token: string
 }
+
+export type Account = {
+    id: number,
+    username: string,
+    fullname: string,
+    role: string,
+    isEnable: boolean
+}
