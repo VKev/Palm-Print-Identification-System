@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -11,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import tienthuan.configuration.ConstantConfiguration;
 import tienthuan.dto.request.AuthenticationRequest;
 import tienthuan.dto.request.RegisterRequest;
@@ -23,7 +25,6 @@ import tienthuan.model.fixed.TokenType;
 import tienthuan.repository.TokenRepository;
 import tienthuan.repository.UserRepository;
 import tienthuan.service.def.IAuthenticationService;
-
 import java.io.IOException;
 import java.util.Collection;
 
@@ -45,7 +46,6 @@ public class AuthenticationService implements IAuthenticationService {
 
     private final ConstantConfiguration constant;
 
-
     @Override
     public ResponseEntity<?> register(RegisterRequest registerRequest) {
         try {
@@ -56,11 +56,9 @@ public class AuthenticationService implements IAuthenticationService {
                     .refreshToken(jwtService.generateRefreshToken(user))
                     .build();
             return new ResponseEntity<>(authenticationResponse, HttpStatus.OK);
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return new ResponseEntity<>(
-                    new ErrorResponse("Some error occur when creating a account!"), HttpStatus.BAD_REQUEST
-            );
+                    new ErrorResponse("Some error occur when creating a account!"), HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -68,10 +66,8 @@ public class AuthenticationService implements IAuthenticationService {
     public ResponseEntity<?> authenticate(AuthenticationRequest authRequest) {
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                    authRequest.username(), authRequest.password()
-            ));
-        }
-        catch (AuthenticationException exception) {
+                    authRequest.username(), authRequest.password()));
+        } catch (AuthenticationException exception) {
             return new ResponseEntity<>(new ErrorResponse("Invalid username or password!"), HttpStatus.UNAUTHORIZED);
         }
 
@@ -87,26 +83,25 @@ public class AuthenticationService implements IAuthenticationService {
                     .build();
             return new ResponseEntity<>(authenticationResponse, HttpStatus.OK);
         }
-        catch(Exception exception) {
-            return new ResponseEntity<>(new ErrorResponse("Invalid username or password!"), HttpStatus.UNAUTHORIZED);
+        catch (Exception exception) {
+            return new ResponseEntity<>(new ErrorResponse("An error occur while login!"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @Override
     public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
         final String authHeader = request.getHeader(constant.AUTHENTICATION_HEADER);
-        if (authHeader == null ||!authHeader.startsWith(constant.AUTHENTICATION_HEADER_BEARER)){
+        if (authHeader == null || !authHeader.startsWith(constant.AUTHENTICATION_HEADER_BEARER)) {
             return new ResponseEntity<>(
-                    new AuthenticationResponse(null, null), HttpStatus.UNAUTHORIZED
-            );
+                    new AuthenticationResponse(null, null), HttpStatus.UNAUTHORIZED);
         }
 
-        final String refreshToken =authHeader.substring(constant.AUTHENTICATION_HEADER_BEARER.length());
+        final String refreshToken = authHeader.substring(constant.AUTHENTICATION_HEADER_BEARER.length());
         final String username = jwtService.extractUsername(refreshToken);
 
         if (username != null) {
             User user = getUser(username);
-            if(jwtService.isValidToken(refreshToken, user)) {
+            if (jwtService.isValidToken(refreshToken, user)) {
                 String newAccessToken = jwtService.generateToken(user);
                 revokeAllOldUserToken(user);
                 saveToken(user, newAccessToken);
@@ -114,18 +109,15 @@ public class AuthenticationService implements IAuthenticationService {
                         .accessToken(newAccessToken)
                         .refreshToken(refreshToken)
                         .build();
-                new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
+                // new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
                 return new ResponseEntity<>(authResponse, HttpStatus.OK);
-            }
-            else {
+            } else {
                 return new ResponseEntity<>(
-                        new ErrorResponse("Login session time expired!"), HttpStatus.UNAUTHORIZED
-                );
+                        new ErrorResponse("Login session time expired!"), HttpStatus.UNAUTHORIZED);
             }
         }
         return new ResponseEntity<>(
-                new AuthenticationResponse(null, null), HttpStatus.UNAUTHORIZED
-        );
+                new AuthenticationResponse(null, null), HttpStatus.UNAUTHORIZED);
     }
 
     @Override
@@ -146,15 +138,25 @@ public class AuthenticationService implements IAuthenticationService {
                 .tokenType(TokenType.BEARER)
                 .expired(constant.JWT_EXPIRED_DISABLE)
                 .revoked(constant.JWT_REVOKED_DISABLE)
-                .username(user.getUsername())
+                .user(user)
                 .build();
         tokenRepository.save(token);
     }
 
-    private void revokeAllOldUserToken(User user) {
-        Collection<Token> validTokenList = tokenRepository.findAllValidTokenByUsername(user.getUsername());
-        if (!validTokenList.isEmpty()) {
-            tokenRepository.deleteAll(validTokenList);
+    @Transactional
+    public void revokeAllOldUserToken(User user) {
+        int maxRetries = 3; int retries = 0; boolean success = false;
+        while (!success && retries < maxRetries) {
+            try {
+                tokenRepository.deleteAllByUserAndExpiredAndRevoked(user, false, false);
+                success = true;
+            }
+            catch (CannotAcquireLockException e) {
+                retries++;
+                if (retries >= maxRetries) {
+                    throw e;
+                }
+            }
         }
     }
 
@@ -164,8 +166,18 @@ public class AuthenticationService implements IAuthenticationService {
 
     private ResponseEntity<?> getLoginSessionExpiredResponse() {
         return new ResponseEntity<>(
-                new ErrorResponse("Login session time expired!"), HttpStatus.UNAUTHORIZED
-        );
+                new ErrorResponse("Login session time expired!"), HttpStatus.UNAUTHORIZED);
     }
 
+
+//    private void revokeAllOldUserToken(User user) {
+//        Collection<Token> validTokenList = tokenRepository.findAllValidTokenByUsername(user.getId());
+//        if (validTokenList != null && !validTokenList.isEmpty()) {
+//            for (Token token : validTokenList) {
+//                tokenRepository.deleteById(token.getId());
+//            }
+//        }
+//        tokenRepository.deleteAllByUserAndExpiredAndRevoked(user, false, false);
+//    }
+    
 }

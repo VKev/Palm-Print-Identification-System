@@ -12,7 +12,7 @@ export type UserProfileToken = {
     token: string;
 }
 
-export type Role = {
+export const Role = {
     ADMIN : 'ADMIN',
     STAFF : 'STAFF'
 }

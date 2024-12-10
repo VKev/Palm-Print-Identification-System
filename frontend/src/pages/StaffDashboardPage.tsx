@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import  { useEffect, useState } from 'react';
 import PanToolIcon from '@mui/icons-material/PanTool';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -7,6 +7,9 @@ import RegisterPalmPrint from '../components/combined/RegisterPalmPrint';
 import HistoryIcon from '@mui/icons-material/History';
 import AccountInfoBlockSidebar from '../components/single/AccountInfoBlockSidebar';
 import { UserProfile } from '../models/User';
+import useAxios from '../utils/useAxios';
+import { useAuth } from '../context/AuthContext';
+import API from '../config/API';
 
 type Tab = { id: number; name: string; };
 
@@ -16,18 +19,28 @@ const tabs: Tab[] = [
     { id: 3, name: 'History Logs' }
 ];
 
-const userProfile: UserProfile = {
-    id: 1,
-    username: 'an132',
-    fullname: 'Nguyễn Văn An',
-    role: 'STAFF',
-}
 
 const StaffDashboardPage = () => {
+    const api = useAxios()
+    const { logout } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>(tabs[0]);
+    const [user, setUser] = useState<UserProfile | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const response = await api.get(API.Authenticaion.GET_INFO)
+            if (response.status === 200) {
+                //console.log(response.data);
+                setUser(response.data)
+            }
+            else {
+                alert('Something went wrong!')
+            }
+        }
+        fetchData().catch(console.error)
+    }, [])
 
     const liItemStyle = 'mt-5 flex items-center p-3 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group';
-
     return (
         <div>
 
@@ -43,7 +56,7 @@ const StaffDashboardPage = () => {
 
             <aside id="default-sidebar" className="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0" aria-label="Sidebar">
                 <div className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
-                    <AccountInfoBlockSidebar userProfile={userProfile}></AccountInfoBlockSidebar>
+                    <AccountInfoBlockSidebar userProfile={user}></AccountInfoBlockSidebar>
                     <hr />
                     <ul className="space-y-2 font-medium">
                         <li
@@ -74,7 +87,7 @@ const StaffDashboardPage = () => {
                             </a>
                         </li>
                         <hr />
-                        <li className='cursor-pointer'>
+                        <li className='cursor-pointer' onClick={logout}>
                             <a className="mt-5 flex items-center p-2 text-red-500 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
                                 <LogoutIcon />
                                 <span className="ms-3">Sign out</span>

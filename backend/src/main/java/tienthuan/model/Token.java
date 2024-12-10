@@ -17,7 +17,7 @@ public class Token {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "token", unique = true, nullable = false, length = 1024)
+    @Column(name = "token", nullable = false, length = 1024)
     private String token;
 
     @Column(name = "token_type", nullable = false)
@@ -29,6 +29,12 @@ public class Token {
     @Column(name = "expired")
     private boolean expired;
 
-    @Column(name = "username", nullable = false)
-    private String username;
+    @Version
+    @Column(name = "version")
+    private Integer version;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    public User user;
+
 }

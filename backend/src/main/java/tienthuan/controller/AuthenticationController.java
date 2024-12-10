@@ -18,11 +18,11 @@ public class AuthenticationController {
 
     private final IAuthenticationService authenticationService;
 
-//    @PostMapping("/register")
+    @PostMapping("/register")
 //    @PreAuthorize("hasRole('ADMIN')")
-//    public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
-//        return authenticationService.register(registerRequest);
-//    }
+    public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
+        return authenticationService.register(registerRequest);
+    }
 
     @PostMapping("/authenticate")
     public ResponseEntity<?> authenticate(@RequestBody AuthenticationRequest authRequest) {

@@ -3,8 +3,8 @@ spring:
     name: backend
   servlet:
     multipart:
-      max-file-size: 20MB
-      max-request-size: 25MB
+      max-file-size: 50MB
+      max-request-size: 75MB
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}

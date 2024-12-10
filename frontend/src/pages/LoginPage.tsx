@@ -1,6 +1,26 @@
-
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
 export default function LoginPage() {
+
+    const { loginUser } = useAuth();
+    const [username, setUsername] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+
+    const handleLogin = () => {
+        if (!username) {
+            toast.error("Username is required");    
+        }
+        if (!password) {
+            toast.error("Password is required");
+        }
+        if (username && password) {
+            loginUser(username, password);
+        }
+    }
+
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div
@@ -14,14 +34,14 @@ export default function LoginPage() {
                     </span>
                     <div className="py-4">
                         <span className="mb-2 text-md">Username</span>
-                        <input
+                        <input onChange={(e) => setUsername(e.target.value)}
                             type="text"
                             className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500"
                         />
                     </div>
                     <div className="py-4">
                         <span className="mb-2 text-md">Password</span>
-                        <input
+                        <input onChange={(e) => setPassword(e.target.value)}
                             type="password"
                             name="pass"
                             className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500"
@@ -34,7 +54,7 @@ export default function LoginPage() {
                         </div>
                         <a className="font-bold text-md">Forgot password?</a>
                     </div>
-                    <button
+                    <button onClick={handleLogin}
                         className="w-full text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2"
                     >
                         Sign in

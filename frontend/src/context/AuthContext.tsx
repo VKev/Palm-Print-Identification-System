@@ -5,6 +5,7 @@ import axios from 'axios';
 import API from '../config/API';
 import HttpStatus from '../config/HttpStatus';
 import { toast } from 'react-toastify';
+import { VERYFYING_PAGE } from '../config/Constant';
 
 const AUTH_TOKENS_KEY = 'authTokens';
 const USER_KEY = 'user';
@@ -31,11 +32,14 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const [isReady, setIsReady] = useState<boolean>(false);
 
     useEffect(() => {
-        const user = localStorage.getItem(USER_KEY);
-        const authTokens = localStorage.getItem(AUTH_TOKENS_KEY);
-        if (user && authTokens) {
-            setUser(JSON.parse(user));
-            setAuthTokens(JSON.parse(authTokens));
+        //const user = localStorage.getItem(USER_KEY);
+        const authTokensString = localStorage.getItem(AUTH_TOKENS_KEY);
+        const tokens = authTokensString ? JSON.parse(authTokensString) : null;      
+        //console.log(tokens);
+        
+        if ( tokens) { // user &&
+            //setUser(JSON.parse(user));
+            setAuthTokens(tokens);
         }
         setIsReady(true);
     }, []);
@@ -51,7 +55,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             if (response.status === HttpStatus.OK) {
                 setAuthTokens(response.data);
                 localStorage.setItem(AUTH_TOKENS_KEY, JSON.stringify(response.data));
-
+                navigate(VERYFYING_PAGE)
             }
             else if (response.status === HttpStatus.UNAUTHORIZED) {
                 toast.error(response.data.message);
@@ -59,7 +63,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         }
         catch (error) {
             console.log(error);
-            toast.error('Invalid username or password');
+            toast.error('Incorrect username or password');
         }
     }
 

@@ -3,12 +3,17 @@ import * as handpose from '@tensorflow-models/handpose';
 import * as tf from '@tensorflow/tfjs';
 import { toast } from "react-toastify";
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
-import LoadEffect from './LoadEffect'; 
+import LoadEffect from './LoadEffect';
 import DeviceNameIdentifier from "./DeviceNameIdentifier";
 
 // const DEFAULT_MP4_NAME = "recorded-video.mp4";
 
-export default function HandRecognizer() {
+type CameraSize = {
+    width: string;
+    maxWidth: string;
+}
+
+export default function HandRecognizer(cameraSize: CameraSize) {
 
     const [recording] = useState<boolean>(true);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -62,7 +67,7 @@ export default function HandRecognizer() {
     }, [handDetectionTime]);
 
     useEffect(() => {
-        startRecording(); 
+        startRecording();
     }, []);
 
     useEffect(() => {
@@ -133,7 +138,7 @@ export default function HandRecognizer() {
         <div  >
             <div>
                 <div>
-                    <button className='text-black bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-yellow-300 dark:focus:ring-yellow-800 font-medium rounded-lg text-sm px-4 py-2 text-center'
+                    <button className='text-black bg-gradient-to-r from-yellow-300 via-yellow-300 to-yellow-300 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-yellow-300 dark:focus:ring-yellow-500 font-medium rounded-lg text-sm px-4 py-2 text-center'
                         onClick={() => startRecording()} disabled={recording}>
                         &nbsp;&nbsp;&nbsp;
                         <RadioButtonCheckedIcon color="error" /> {recording ? 'Recording...' : 'Start Recording'}
@@ -152,7 +157,15 @@ export default function HandRecognizer() {
                             : "Press 'Start Recording' to begin."}
                 </p>
 
-                <div style={{ position: 'relative', width: '100%', maxWidth: '600px' }}>
+                <div > 
+                    {/* <video
+                        className="border-dashed border-2 border-gray-300 rounded-lg"
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        style={cameraSize}
+                        // transform: 'scaleX(-1)' { width: '100%', maxWidth: '700px' }
+                    /> */}
                     {isLoading && (
                         <div style={{
                             display: 'flex',
@@ -169,14 +182,16 @@ export default function HandRecognizer() {
                         </div>
                     )}
 
-                    <video
-                        className="border-dashed border-2 border-gray-300 rounded-lg"
-                        ref={videoRef}
-                        autoPlay
-                        muted
-                        style={{ width: '100%', maxWidth: '700px' }}
-                        // transform: 'scaleX(-1)'
-                    />
+                    <div className="flex justify-center">
+                        <video
+                            className="border-dashed border-2 border-gray-300 rounded-lg"
+                            ref={videoRef}
+                            autoPlay
+                            muted
+                            style={cameraSize}
+                        // transform: 'scaleX(-1)' { width: '100%', maxWidth: '700px' }
+                        />
+                    </div>
                     <div>
                         <DeviceNameIdentifier />
                     </div>

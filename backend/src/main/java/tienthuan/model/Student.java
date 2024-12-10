@@ -23,6 +23,9 @@ public class Student {
     @Column(name = "student_name")
     private String studentName;
 
+    @Column(name = "is_registered")
+    private Boolean isRegistered;
+
     @OneToMany(mappedBy = "student", fetch = FetchType.EAGER)
     private Collection<PalmPrintImage> palmPrintImages;
 

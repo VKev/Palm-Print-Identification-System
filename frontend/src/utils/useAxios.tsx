@@ -18,19 +18,24 @@ const useAxios = () => {
 
     AxiosInstance.interceptors.request.use(async req => {
         const user = jwtDecode(authTokens?.access_token || '{}');
+        //console.log(user);
+        
         const isExpired = user.exp ? dayjs.unix(user.exp).diff(dayjs()) < 1 : true;
     
         if (!isExpired) return req;
     
         const response = await axios.post(API.BASE_API + API.Authenticaion.REFRESH_TOKEN, {}, {
-            params: {
-                refreshToken: authTokens?.refresh_token
+            headers: {
+                Authorization: `Bearer ${authTokens?.refresh_token}`,
             }
         });
-        setAuthTokens(response.data)
-        setUser(jwtDecode(response.data))
+        setAuthTokens(response.data);
+        //console.log(response.data);
+        setUser(jwtDecode(response.data.access_token))
     
         localStorage.setItem(AUTH_TOKENS_KEY, JSON.stringify(response.data));
+        //console.log(response.data.access_token);
+        
         req.headers.Authorization = `Bearer ${response.data.access_token}`;
     
         return req

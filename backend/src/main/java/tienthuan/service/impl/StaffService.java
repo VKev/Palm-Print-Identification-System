@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import tienthuan.dto.response.ErrorResponse;
 import tienthuan.dto.response.MessageResponse;
+import tienthuan.dto.response.StudentValidationResponse;
 import tienthuan.model.PalmPrintImage;
 import tienthuan.model.Student;
 import tienthuan.repository.PalmPrintImageRepository;
@@ -182,7 +183,16 @@ public class StaffService implements IStaffService {
 
     @Override
     public ResponseEntity<?> validateStudentCode(String studentCode) {
-        return null;
+        var student = studentRepository.findByStudentCode(studentCode);
+        return student.map(
+                value -> new ResponseEntity<>(
+                         new StudentValidationResponse(Boolean.TRUE, value.getIsRegistered()), HttpStatus.OK
+                ))
+                .orElseGet(
+                        () -> new ResponseEntity<>(
+                              new StudentValidationResponse(Boolean.FALSE, Boolean.FALSE), HttpStatus.NOT_FOUND
+                        )
+                );
     }
 
     @Override
