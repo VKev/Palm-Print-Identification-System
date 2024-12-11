@@ -15,4 +15,6 @@ public interface IAdminService {
 
     ResponseEntity<?> registerStaffAccount(RegisterRequest registerRequest);
 
+    ResponseEntity<?> createStudent();
+
 }

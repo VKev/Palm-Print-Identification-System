@@ -3,6 +3,13 @@ export const FileType = {
     FILE: 'file',
 }
 
+export type Student = {
+    id: number;
+    studentCode: string;
+    studentName: string;
+    isRegistered: boolean;
+}
+
 export type ImageFile = {
     file: File | null;
     base64: string | null;

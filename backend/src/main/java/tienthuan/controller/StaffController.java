@@ -79,20 +79,21 @@ public class StaffController {
      * @return Collections of cut background images
      */
     @PostMapping(value = "/upload-palm-print-video/registration/{studentCode}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadPalmPrintVideo(
+    public ResponseEntity<?> uploadPalmPrintVideoRegistration(
             @PathVariable("studentCode") String studentCode,
             @Parameter(description = "Video file", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("video")
             MultipartFile videoFile
     ) {
-        return staffService.uploadPalmPrintVideo(studentCode, videoFile);
+        return staffService.uploadPalmPrintVideoRegistration(studentCode, videoFile);
     }
 
 
     @PostMapping("/recognize-palm-print")
     public ResponseEntity<?> recognizePalmPrint(
             @Parameter(description = "Video file", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
-            @RequestParam("video") MultipartFile videoFile
+            @RequestParam("video")
+            MultipartFile videoFile
     ) {
         return staffService.recognizePalmPrint(videoFile);
     }

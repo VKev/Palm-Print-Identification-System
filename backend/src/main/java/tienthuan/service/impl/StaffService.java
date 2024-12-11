@@ -1,14 +1,14 @@
 package tienthuan.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import tienthuan.dto.response.ErrorResponse;
-import tienthuan.dto.response.MessageResponse;
-import tienthuan.dto.response.StudentValidationResponse;
+import tienthuan.dto.response.*;
+import tienthuan.mapper.StudentMapper;
 import tienthuan.model.PalmPrintImage;
 import tienthuan.model.Student;
 import tienthuan.repository.PalmPrintImageRepository;
@@ -19,9 +19,8 @@ import tienthuan.util.ImageUtil;
 import tienthuan.util.VideoUtil;
 import java.nio.file.Files;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collection;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -38,6 +37,8 @@ public class StaffService implements IStaffService {
 
     private final VideoUtil videoUtil;
 
+    private final StudentMapper studentMapper;
+
 
     @Override
     public ResponseEntity<?> uploadPalmPrintImages(String studentCode, MultipartFile[] files) {
@@ -48,7 +49,6 @@ public class StaffService implements IStaffService {
             return new ResponseEntity<>(new ErrorResponse("Student code not found"), HttpStatus.NOT_FOUND);
         }
         else {
-            // Compress and save base64 images
 //            for (MultipartFile file : files) {
 //                savePalmPrintImages(student.get(), file);
 //            }
@@ -70,32 +70,74 @@ public class StaffService implements IStaffService {
         if (files == null)
             return new ResponseEntity<>(new ErrorResponse("No file uploaded"), HttpStatus.BAD_REQUEST);
         else {
-            return palmPrintRecognitionAiAPI.registerInference(studentCode, convertMultipartFilesToBase64(files));
+            try {
+                palmPrintRecognitionAiAPI.registerInference(studentCode, convertMultipartFilesToBase64(files));
+                var student = studentRepository.findByStudentCode(studentCode).get();
+                student.setIsRegistered(Boolean.TRUE);
+                studentRepository.save(student);
+                return new ResponseEntity<>(new MessageResponse("Register palm print successfully!"), HttpStatus.OK);
+            }
+            catch (Exception exception) {
+                log.error("Exception at register inference: " + exception.getMessage());
+                return new ResponseEntity<>(new ErrorResponse("Register palm print fail!"), HttpStatus.INTERNAL_SERVER_ERROR);
+            }
         }
     }
 
     @Override
-    public ResponseEntity<?> uploadPalmPrintVideo(String studentCode, MultipartFile videoFile) {
+    public ResponseEntity<?> uploadPalmPrintVideoRegistration(String studentCode, MultipartFile videoFile) {
         try {
             Collection<File> extractedImages = videoUtil.extractImages(videoFile);
+            List<byte[]> base64Images = new ArrayList<>();
             if (extractedImages == null)
                 return new ResponseEntity<>(new ErrorResponse("No file extracted"), HttpStatus.BAD_REQUEST);
+
             var student = studentRepository.findByStudentCode(studentCode);
             if (student.isEmpty()) {
                 return new ResponseEntity<>(new ErrorResponse("Student code not found"), HttpStatus.NOT_FOUND);
             }
             else {
                 for (File file : extractedImages) {
-                    savePalmPrintImages(student.get(), file);
+                    base64Images.add(Files.readAllBytes(file.toPath()));
+                    // savePalmPrintImages(student.get(), file);
                 }
-                return new ResponseEntity<>(new MessageResponse("Upload and extract palm print video successfully!"), HttpStatus.OK);
+                List<byte[]> filterBase64Images = base64Images.stream().skip(Math.max(0, base64Images.size() - 30)).toList();
+                return new ResponseEntity<>(
+                        new VideoUploadingResponse("Upload and extract palm print video successfully!",
+                                Boolean.TRUE, filterBase64Images), HttpStatus.OK
+                );
             }
         }
         catch (Exception exception) {
             log.error("Exception at upload palm print video: " + exception.getMessage());
             return new ResponseEntity<>(new ErrorResponse("Upload and extract palm print video fail!"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
 
+    @Override
+    public ResponseEntity<?> recognizePalmPrint(MultipartFile videoFile) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            Collection<File> extractedImages = videoUtil.extractImages(videoFile);
+            List<byte[]> base64Images = new ArrayList<>();
+            if (extractedImages == null)
+                return new ResponseEntity<>(new ErrorResponse("No file extracted"), HttpStatus.BAD_REQUEST);
+
+            for (File file : extractedImages) {
+                base64Images.add(Files.readAllBytes(file.toPath()));
+            }
+            List<byte[]> filterBase64Images = base64Images.stream().skip(Math.max(0, base64Images.size() - 30)).toList();
+            var aiServeResponse = palmPrintRecognitionAiAPI.recognizePalmPrintCosine(filterBase64Images).getBody();
+            AiRecognitionResponse aiRecognitionResponse = objectMapper.convertValue(aiServeResponse, AiRecognitionResponse.class);
+            aiRecognitionResponse.setStudentResponse(
+                    studentMapper.toResponse(studentRepository.findByStudentCode(aiRecognitionResponse.getMostCommonId()).get())
+            );
+            return new ResponseEntity<>(aiRecognitionResponse, HttpStatus.OK);
+        }
+        catch (Exception exception) {
+            log.info("Exception at recognize palm print: " + exception.getMessage());
+            return new ResponseEntity<>(new ErrorResponse("Recognize palm print fail!"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     private void savePalmPrintImages(Student student, MultipartFile file) {
@@ -144,26 +186,6 @@ public class StaffService implements IStaffService {
         return base64Images;
     }
 
-//    private Collection<byte[]> convertToBase64(MultipartFile[] files) {
-//        Collection<byte[]> base64Images = new ArrayList<>();
-//        for (MultipartFile file : files) {
-//            try {
-//                base64Images.add(ImageUtil.decompressImage(file.getBytes()));
-//            }
-//            catch (Exception exception) {
-//                log.info("Exception at convert to base64: " + exception.getMessage());
-//            }
-//        }
-//        return base64Images;
-//    }
-
-
-
-    @Override
-    public ResponseEntity<?> recognizePalmPrint(MultipartFile videoFile) {
-        return null;
-    }
-
     @Override
     public ResponseEntity<?> recognizePalmPrint(MultipartFile[] files) {
         if (files == null)
@@ -174,12 +196,6 @@ public class StaffService implements IStaffService {
         }
     }
 
-
-
-    @Override
-    public ResponseEntity<?> registerPalmPrint(String studentCode, MultipartFile videoFile) {
-        return null;
-    }
 
     @Override
     public ResponseEntity<?> validateStudentCode(String studentCode) {

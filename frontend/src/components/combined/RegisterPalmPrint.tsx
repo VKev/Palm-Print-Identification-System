@@ -24,7 +24,14 @@ export default function RegisterPalmPrint() {
     const [registerPhase, setRegisterPhase] = useState<number>(RegistrationPhases.BACKGROUND_CUT);
 
     const toggleCamera = () => setCameraOn(!cameraOn);
-    
+
+    const resetRegisterProccess = () => {
+        setStudentCode(null);
+        setStudentCodeResponse(null);
+        setSelectedImages([]);
+        setRegisterPhase(RegistrationPhases.BACKGROUND_CUT);
+    }
+
 
     const validateStudentCode = async () => {
         try {
@@ -37,22 +44,20 @@ export default function RegisterPalmPrint() {
                 //console.log(response.data);
             }
             else {
-                setStudentCodeResponse(null);
+                resetRegisterProccess();
                 toast.error('Student code is required!')
-            } 
+            }
         }
         catch (error: any) {
             if (error.response.status === HttpStatus.NOT_FOUND) {
-                setStudentCodeResponse(null);
+                resetRegisterProccess();
                 toast.error(error.response.data.message);
-                console.log(error.response.data);
             }
             else {
-                setStudentCodeResponse(null);
+                resetRegisterProccess();
                 toast.error('Something went wrong! Try again later.');
             }
         }
-        
     }
 
     // Send selected images to server
@@ -78,12 +83,21 @@ export default function RegisterPalmPrint() {
         if (selectedImages.length === 0) return;
         const formData = new FormData();
         const files: File[] = [];
-        selectedImages.forEach((image) => {
-            if(!image.isSelected && image.file) {
-                files.push(image.file);
-            }
-        });
-        
+        if (selectedImages[0].type === FileType.BASE64) {
+            selectedImages.forEach((image) => {
+                if (!image.isSelected && image.base64) {
+                    files.push(base64ToFile(image.base64, uuidv4() + '.png'));
+                }
+            });
+        }
+        else {
+            selectedImages.forEach((image) => {
+                if (!image.isSelected && image.file) {
+                    files.push(image.file);
+                }
+            });
+        }
+
         files.forEach(file => formData.append('images', file));
         try {
             const response = await api.post(API.Staff.UPLOAD_PALM_PRINT_FRAME + studentCode, formData);
@@ -113,8 +127,8 @@ export default function RegisterPalmPrint() {
         const formData = new FormData();
         const files: File[] = [];
         selectedImages.forEach((image) => {
-            if(!image.isSelected && image.base64) {
-                files.push(base64ToFile(image.base64, uuidv4()+'.png'));
+            if (!image.isSelected && image.base64) {
+                files.push(base64ToFile(image.base64, uuidv4() + '.png'));
             }
         });
 
@@ -147,8 +161,8 @@ export default function RegisterPalmPrint() {
         const formData = new FormData();
         const files: File[] = [];
         selectedImages.forEach((image) => {
-            if(!image.isSelected && image.base64) {
-                files.push(base64ToFile(image.base64, uuidv4()+'.png'));
+            if (!image.isSelected && image.base64) {
+                files.push(base64ToFile(image.base64, uuidv4() + '.png'));
             }
         });
 
@@ -156,9 +170,8 @@ export default function RegisterPalmPrint() {
         try {
             const response = await api.post(API.Staff.REGISTER_INFERENCE + studentCode, formData);
             if (response.status === HttpStatus.OK) {
-                //toast.success(response.data);
-                console.log(response.data);
-                setRegisterPhase(RegistrationPhases.BACKGROUND_CUT);
+                toast.success(response.data.message);
+                resetRegisterProccess();
             }
         }
         catch (error: any) {
@@ -199,7 +212,7 @@ export default function RegisterPalmPrint() {
             {/* <div className="grid grid-cols-2 gap-4"> */}
 
             <div>
-                <div className="mb-5">
+                {/* <div className="mb-5">
                     <div className="text-lg mb-2">Enter student code for register<span className="text-red-500">*</span></div>
                     <div className="flex">
                         <input onChange={(e) => setStudentCode(e.target.value)}
@@ -211,22 +224,60 @@ export default function RegisterPalmPrint() {
                             Check
                         </button>
                     </div>
+                </div> */}
+                <div className="mb-5">
+                    <div className="text-lg mb-2 font-semibold text-gray-700">
+                        Enter student code for register<span className="text-red-500">*</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <input
+                            onChange={(e) => setStudentCode(e.target.value)}
+                            type="text"
+                            placeholder="Enter student code ...."
+                            className="flex-grow p-3 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                            onClick={validateStudentCode}
+                            className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 rounded-lg"
+                        >
+                            Check
+                        </button>
+                    </div>
                 </div>
                 {
-                    cameraOn && <HandRecognizer 
-                        width={"200%"} maxWidth={"1000px"} 
-                        cameraMode={CameraMode.REGISTRATION} 
+                    cameraOn && <HandRecognizer
+                        width={"200%"} maxWidth={"1000px"}
+                        cameraMode={CameraMode.REGISTRATION}
                         studentCode={studentCode}
+                        setSelectedImages={setSelectedImages}
+                        setRecognitionResult={() => { }}
                     />
                 }
 
                 {
                     studentValidationResponse?.statusResult && !studentValidationResponse.isRegistered &&
                     <>
-                        <div>
+                        {/* <div>
                             <IconButton onClick={toggleCamera} style={{ color: cameraOn ? 'inherit' : 'red', fontSize: '3rem' }} title="Open/close camera">
                                 {cameraOn ? <VideocamIcon style={{ fontSize: 'inherit' }} /> : <VideocamOffIcon style={{ fontSize: 'inherit' }} />}
                             </IconButton>
+                        </div> */}
+                        <div className="flex items-center mb-4 gap-4">
+                            <IconButton
+                                onClick={toggleCamera}
+                                className={`p-4 transition-colors duration-200 rounded-full hover:bg-gray-100 scale-125
+        ${cameraOn ? 'text-blue-600 hover:text-blue-700' : 'text-red-600 hover:text-red-700'}`}
+                                title="Open/close camera"
+                            >
+                                {cameraOn ? (
+                                    <VideocamIcon className="w-12 h-12" />
+                                ) : (
+                                    <VideocamOffIcon className="w-12 h-12" />
+                                )}
+                            </IconButton>
+                            <h2 className="text-xl font-semibold text-gray-700">
+                                {cameraOn ? 'Camera Active' : 'Camera Inactive'}
+                            </h2>
                         </div>
                         <div className="mb-5">
                             <div className="w-full py-9 bg-gray-50 rounded-2xl border border-gray-300 gap-3 grid border-dashed">
@@ -238,7 +289,7 @@ export default function RegisterPalmPrint() {
                                     </svg>
                                     <h2 className="text-center text-gray-400   text-xs leading-4">
                                         PNG, JPG, smaller than 20MB
-                                        </h2>
+                                    </h2>
                                 </div>
                                 <div className="grid gap-2">
                                     <h4 className="text-center text-gray-900 text-sm font-medium leading-snug">
@@ -260,9 +311,9 @@ export default function RegisterPalmPrint() {
                                             <img
                                                 key={index}
                                                 src={
-                                                    image.type === FileType.FILE && image.file ? 
-                                                    URL.createObjectURL(image.file) : 
-                                                    "data:image/png;base64, " + image.base64
+                                                    image.type === FileType.FILE && image.file ?
+                                                        URL.createObjectURL(image.file) :
+                                                        "data:image/png;base64, " + image.base64
                                                 }
                                                 alt={`Selected ${index}`}
                                                 className={`w-40 h-auto rounded-lg ${image.isSelected ? 'border-4 border-red-500' : ''}`}
@@ -273,12 +324,15 @@ export default function RegisterPalmPrint() {
                                 </div>
 
                                 <div>
-                                    <button 
-                                        onClick={sendImagesToServer}
-                                        className="ml-3 text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2"
-                                        disabled={isLoading}>
-                                        {isLoading ? 'Loading...' : 'Confirm to next step ('+(registerPhase-1)+'/3)'}
-                                    </button>
+                                    {
+                                        selectedImages.length > 0 &&
+                                        <button
+                                            onClick={sendImagesToServer}
+                                            className="ml-3 text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2"
+                                            disabled={isLoading}>
+                                            {isLoading ? 'Loading...' : 'Confirm to next step (' + (registerPhase - 1) + '/3)'}
+                                        </button>
+                                    }
                                 </div>
 
                             </div>
@@ -288,11 +342,11 @@ export default function RegisterPalmPrint() {
 
             </div>
 
-            <div className="border-dashed border-2 border-gray-300 rounded-lg">
+            {/* <div className="border-dashed border-2 border-gray-300 rounded-lg">
                 <div >
                     <div className="text-2xl text-center">ROI images here</div>
                 </div>
-            </div>
+            </div> */}
 
             {/* </div> */}
         </div>
