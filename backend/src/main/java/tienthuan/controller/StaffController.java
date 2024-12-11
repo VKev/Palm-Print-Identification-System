@@ -40,7 +40,7 @@ public class StaffController {
             @RequestParam("images") MultipartFile[] files
     ) {
         ResponseEntity<?> response = staffService.uploadPalmPrintImages(studentCode, files);
-        log.info("Response: {}", response);
+        // log.info("Response: {}", response);
         return response.getBody();
     }
 

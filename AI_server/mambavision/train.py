@@ -70,7 +70,7 @@ test_batch = args.test_batch
 persistent_workers=True
 pin_memory=True
 # continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_T_latest_19.pth"
-continue_checkpoint = r"checkpoints/checkpoint_epoch_72.pth"
+continue_checkpoint = r"checkpoints/checkpoint_epoch_78.pth"
 # continue_checkpoint = r""
 wandb.init(
     # set the wandb project where this run will be logged
@@ -182,12 +182,19 @@ total_params = count_parameters(model)
 print(f"Total number of parameters in the model: {total_params}")
 
 # Count parameters in level 2
-level_2_params = count_parameters(model.levels[-2])
+level_3_params = count_parameters(model.levels[3])
+print(f"Number of parameters in level 2: {level_3_params}")
+
+# Count parameters in level 2
+level_2_params = count_parameters(model.levels[2])
 print(f"Number of parameters in level 2: {level_2_params}")
 
 # Count parameters in level 1
-level_1_params = count_parameters(model.levels[-1])
+level_1_params = count_parameters(model.levels[1])
 print(f"Number of parameters in level 1: {level_1_params}")
+
+level_0_params = count_parameters(model.levels[0])
+print(f"Number of parameters in level 0: {level_0_params}")
 
 head_params = count_parameters(model.head)
 print(f"Number of parameters in head : {head_params}")
