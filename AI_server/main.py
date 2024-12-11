@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request,make_response
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
@@ -10,7 +10,7 @@ import io
 from elastic_search_palmprint import *
 from mambavision import inference, transform
 import torch
-from depthanythingv2 import background_cut
+from depthanythingv2 import background_cut, background_cut_batch
 from roiextraction import roicut, tensor_to_image
 from util import *
 from io import BytesIO
@@ -32,16 +32,64 @@ app = Flask(__name__)
 # else:
 #     raise Exception("MongoDB connection string not found in environment variables")
 
-def encode_base64(images):
-    processed_images_base64 = []
-    for img in images:
-        # Convert the processed image back to base64
-        buffered = io.BytesIO()
-        img.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        processed_images_base64.append(img_base64)
-    return processed_images_base64
+def encode_image_to_base64_opencv(img, format="PNG"):
+    """
+    Encodes a single image to a base64 string using OpenCV.
+    
+    Parameters:
+    - img (PIL.Image.Image): The image to encode.
+    - format (str): The format to save the image in (default is PNG).
+    
+    Returns:
+    - str: The base64-encoded string of the image.
+    """
+    # Convert PIL Image to NumPy array
+    img_array = np.array(img)
 
+    # Check the number of dimensions
+    if img_array.ndim == 2:
+        # Grayscale image: Convert to BGR by stacking
+        img_bgr = cv2.cvtColor(img_array, cv2.COLOR_GRAY2BGR)
+    elif img_array.ndim == 3:
+        if img_array.shape[2] == 3:
+            # RGB to BGR
+            img_bgr = img_array[:, :, ::-1]
+        elif img_array.shape[2] == 4:
+            # RGBA to BGR
+            img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGBA2BGR)
+        else:
+            # Unexpected number of channels
+            raise ValueError(f"Unsupported number of channels: {img_array.shape[2]}")
+    else:
+        # Unexpected image format
+        raise ValueError(f"Unsupported image shape: {img_array.shape}")
+
+    # Encode image to memory buffer using OpenCV
+    encode_param = [int(cv2.IMWRITE_PNG_COMPRESSION), 3]  # Adjust compression level as needed
+    result, buffer = cv2.imencode(f'.{format.lower()}', img_bgr, encode_param)
+    
+    if not result:
+        raise ValueError("Image encoding failed")
+
+    # Base64 encode the bytes
+    img_base64 = base64.b64encode(buffer).decode('utf-8')
+    return img_base64
+
+def encode_base64(images, format="PNG", max_workers=None):
+    """
+    Encodes a list of images to base64 strings in parallel using OpenCV.
+    
+    Parameters:
+    - images (list of PIL.Image.Image): The images to encode.
+    - format (str): The format to save the images in (default is PNG).
+    - max_workers (int, optional): The maximum number of threads to use. Defaults to the number of processors on the machine.
+    
+    Returns:
+    - list of str: The base64-encoded strings of the images.
+    """
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        processed_images_base64 = list(executor.map(lambda img: encode_image_to_base64_opencv(img, format), images))
+    return processed_images_base64
 
 def decode_base64_images_to_grayscale(base64_images):
     """
@@ -62,10 +110,10 @@ def decode_base64_images_to_grayscale(base64_images):
         decoded_images.append(img)
     
     return decoded_images
-
-# Example endpoint to retrieve data from MongoDB
+import time
 @app.route("/ai/register/backgroundcut", methods=["POST"])
-def background_cutt():
+def background_cutt_batch():
+    print("/ai/register/backgroundcut")
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
 
@@ -75,21 +123,28 @@ def background_cutt():
     base64_images = data['images']
     # print(data)
     images = decode_base64_images(base64_images)
-    background_cut_images = background_cut(images, 0.7)
+    background_cut_images = background_cut_batch(images, 0.6)
     
     # roi_cut_image = roicut(background_cut_image)
 
     
     # darken_image = preprocess.darken_image(roi_cut_image,0.8)
     # final_image = preprocess.enhance_image(darken_image, 1.5)
+    torch.cuda.empty_cache()
 
-    return jsonify({"images": encode_base64(background_cut_images)}), 200
+    start_time = time.time()
+    result = encode_base64(background_cut_images)
+    end_time = time.time()
+    inference_time = end_time - start_time
+    print(f"Blackout took {inference_time:.4f} seconds")
+    return jsonify({"images": result}), 200
+
 
 @app.route("/ai/register/roicut", methods=["POST"])
 def roi_cut():
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
-
+    print("/ai/register/roicut")
     data = request.json
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
@@ -101,13 +156,13 @@ def roi_cut():
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
     final_image = preprocess.enhance_pilimages(darken_images, 1.5)
 
-    # background_cut_images = background_cut(images, 0.7)
+    # background_cut_images = background_cut(images, 0.6)
     # for idx, img in enumerate(roi_cut_images):
     #     filename = f"processed_image_{idx + 1}.png"
     #     save_path = os.path.join(current_directory, filename)
     #     img.save(save_path)
  
-
+    torch.cuda.empty_cache()
     return jsonify({"images": encode_base64(final_image)}), 200
 
 def calculate_pairwise_euclidean_distance(features):
@@ -119,6 +174,7 @@ def calculate_pairwise_euclidean_distance(features):
     return distances
 @app.route("/ai/register/inference", methods=["POST"])
 def register():
+    print("/ai/register/inference")
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
 
@@ -133,44 +189,22 @@ def register():
         result = inference(batch.to(torch.float32).to("cuda"))
     # euclidean_distances = calculate_pairwise_euclidean_distance(result)
     bulk_index_vectors(es,index_name='palm-print-index', student_id=student_id, feature_vectors= result.cpu().numpy().tolist())
+    torch.cuda.empty_cache()
     return jsonify({"feature_vectors": result.cpu().numpy().tolist()}), 200
     # return jsonify({"feature_vectors": euclidean_distances.cpu().numpy().tolist()}), 200
-
-@app.route("/ai/recognize/cosine", methods=["POST"])
-def search():
-    current_directory = os.path.dirname(os.path.abspath(__file__)) 
-    save_path = os.path.join(current_directory, 'processed_image.png')
-
-    data = request.json
-    if 'images' not in data:
-        return jsonify({"error": "Images not found in request"}), 400
-    base64_images = data['images']
-    images = decode_base64_images(base64_images)
-    background_cut_images = background_cut(images, 0.7)
-    background_cut_images = [img.convert('RGB') for img in background_cut_images]
-    roi_cut_images = roicut(background_cut_images)
-    darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
-    final_images = preprocess.enhance_pilimages(darken_images, 1.5)
-    final_images = [img.convert('RGB') for img in final_images]
-    batch = torch.stack([transform(img) for img in final_images])
-    with torch.no_grad():
-        result = inference(batch.to(torch.float32).to("cuda"))
-    top1 = bulk_cosine_similarity_search(es, "palm-print-index", result.cpu().numpy().tolist())
-    
-    return jsonify(verify_palm_print(top1))
 
 
 @app.route("/ai/recognize/cosine", methods=["POST"])
 def cosine_search():
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
-
+    print("/ai/recognize/cosine")
     data = request.json
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
     images = decode_base64_images(base64_images)
-    background_cut_images = background_cut(images, 0.7)
+    background_cut_images = background_cut_batch(images, 0.6)
     background_cut_images = [img.convert('RGB') for img in background_cut_images]
     roi_cut_images = roicut(background_cut_images)
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
@@ -188,13 +222,13 @@ def cosine_search():
 def euclidean_search():
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
-
+    print("/ai/recognize/euclidean")
     data = request.json
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
     images = decode_base64_images(base64_images)
-    background_cut_images = background_cut(images, 0.7)
+    background_cut_images = background_cut_batch(images, 0.6)
     background_cut_images = [img.convert('RGB') for img in background_cut_images]
     roi_cut_images = roicut(background_cut_images)
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
