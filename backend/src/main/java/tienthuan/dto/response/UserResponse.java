@@ -21,4 +21,7 @@ public class UserResponse {
 
     @JsonProperty("role")
     private String role;
+
+    @JsonProperty("isEnable")
+    private Boolean isEnable;
 }
