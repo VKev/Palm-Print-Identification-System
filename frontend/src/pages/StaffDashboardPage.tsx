@@ -108,7 +108,7 @@ const StaffDashboardPage = () => {
             <div className="p-4 px-10 sm:ml-64">
                 
                 {
-                    activeTab.id === tabs[0].id ? <RecognitionPalmPrint /> : null
+                    activeTab.id === tabs[0].id ? <RecognitionPalmPrint user={user} /> : null
                 }
 
                 {

@@ -91,7 +91,7 @@ public class StaffController {
 
     @PostMapping("/recognize-palm-print/{userId}")
     public ResponseEntity<?> recognizePalmPrint(
-            @RequestParam("userId") Long userId,
+            @PathVariable("userId") Long userId,
             @Parameter(description = "Video file", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("video")
             MultipartFile videoFile

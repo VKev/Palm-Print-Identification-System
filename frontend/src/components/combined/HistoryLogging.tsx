@@ -17,21 +17,21 @@ interface HistoryResponse {
 
 const ITEMS_PER_PAGE = 10;
 
-export default function HistoryLogging({user} : { user: UserProfile | null }) {
-    
+export default function HistoryLogging({ user }: { user: UserProfile | null }) {
+
     const api = useAxios();
     const [historylogs, setHistoryLogs] = useState<HistoryResponse[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         const fetchData = async () => {
-            const response = await api.get(API.Staff.GET_HISTORY_LOGS_BY_STAFF + user.id);
+            const response = await api.get(API.Staff.GET_HISTORY_LOGS_BY_STAFF + user?.id);
             if (response.status === HttpStatus.OK) {
                 setHistoryLogs(response.data);
             }
         }
         fetchData().catch(console.error);
-    },[])
+    }, [])
 
     const paginatedData = historylogs.slice(
         (currentPage - 1) * ITEMS_PER_PAGE,
@@ -49,7 +49,7 @@ export default function HistoryLogging({user} : { user: UserProfile | null }) {
                     <thead>
                         <tr>
                             <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">ID</th>
-                            <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Accept</th>
+                            <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">STATUS</th>
                             <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Avg Occurrence Score</th>
                             <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Avg Similarity Score</th>
                             <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Most Common ID</th>
@@ -72,7 +72,16 @@ export default function HistoryLogging({user} : { user: UserProfile | null }) {
                                 <td className="py-4 px-6 text-sm text-gray-500 text-center">{item.mostCommonId}</td>
                                 <td className="py-4 px-6 text-sm text-gray-500 text-center">{item.occurrenceCount}</td>
                                 <td className="py-4 px-6 text-sm text-gray-500 text-center">{item.score.toFixed(10)}</td>
-                                <td className="py-4 px-6 text-sm text-gray-500 text-center">{item.historyDate}</td>
+                                <td className="py-4 px-6 text-sm text-gray-500 text-center">
+                                    {new Date(item.historyDate).toLocaleString('en-GB', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false
+                                    })}
+                                </td>
                             </tr>
                         ))}
                     </tbody>

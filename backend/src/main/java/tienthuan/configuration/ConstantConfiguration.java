@@ -21,6 +21,7 @@ public class ConstantConfiguration {
 
     // Video extractor properties
     public final Integer IMAGES_FRAME_JUMP = 6;
+    public final Integer FRAMES_LIMITATION = 30;
     public final String IMAGES_EXTENSION_TYPE = ".png";
 
 

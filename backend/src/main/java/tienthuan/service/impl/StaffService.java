@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import tienthuan.configuration.ConstantConfiguration;
 import tienthuan.dto.response.*;
 import tienthuan.mapper.HistoryMapper;
 import tienthuan.mapper.StudentMapper;
@@ -40,7 +41,7 @@ public class StaffService implements IStaffService {
     private final StudentMapper studentMapper;
     private final UserRepository userRepository;
     private final HistoryMapper historyMapper;
-
+    private final ConstantConfiguration constant;
 
     @Override
     public ResponseEntity<?> uploadPalmPrintImages(String studentCode, MultipartFile[] files) {
@@ -128,7 +129,8 @@ public class StaffService implements IStaffService {
             for (File file : extractedImages) {
                 base64Images.add(Files.readAllBytes(file.toPath()));
             }
-            List<byte[]> filterBase64Images = base64Images.stream().skip(Math.max(0, base64Images.size() - 30)).toList();
+            List<byte[]> filterBase64Images = base64Images.stream()
+                    .skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList();
             var aiServeResponse = palmPrintRecognitionAiAPI.recognizePalmPrintCosine(filterBase64Images).getBody();
             AiRecognitionResponse aiRecognitionResponse = objectMapper.convertValue(aiServeResponse, AiRecognitionResponse.class);
             aiRecognitionResponse.setStudentResponse(
@@ -139,7 +141,7 @@ public class StaffService implements IStaffService {
             return new ResponseEntity<>(aiRecognitionResponse, HttpStatus.OK);
         }
         catch (Exception exception) {
-            log.info("Exception at recognize palm print: " + exception.getMessage());
+            log.info("Exception at recognize palm print: " + exception);
             return new ResponseEntity<>(new ErrorResponse("Recognize palm print fail!"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

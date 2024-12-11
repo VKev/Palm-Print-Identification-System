@@ -5,8 +5,9 @@ import { IconButton } from '@mui/material';
 import { useState } from "react";
 import { ImageFile } from "../../models/Student";
 import { CameraMode, RecognitionResult } from "../../models/PalmPrint";
+import { UserProfile } from "../../models/User";
 
-export default function RecognitionPalmPrint() {
+export default function RecognitionPalmPrint({user} : {user: UserProfile | null}) {
 
     const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
     const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
@@ -27,7 +28,9 @@ export default function RecognitionPalmPrint() {
                         cameraOn && <HandRecognizer width={"100%"} maxWidth={"700px"}
                             cameraMode={CameraMode.RECOGNITION}
                             setSelectedImages={setSelectedImages}
-                            setRecognitionResult={setRecognitionResult} />
+                            setRecognitionResult={setRecognitionResult}
+                            userProfile={user}
+                            />
                     }
 
                     {/* <div>

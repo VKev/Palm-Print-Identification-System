@@ -74,6 +74,8 @@ export default function HandRecognizer(cameraProps: Props) {
         setIsHandlingVideo(true);
         const formData = new FormData();
         formData.append('video', videoBlob, uuidv4()+'.mp4');
+        console.log(API.Staff.RECOGNIZE_PALM_PRINT_BY_VIDEO + cameraProps.userProfile?.id);
+        
         try {
             const response = await api.post(API.Staff.RECOGNIZE_PALM_PRINT_BY_VIDEO + cameraProps.userProfile?.id , formData);
             if (response.status === HttpStatus.OK) {
