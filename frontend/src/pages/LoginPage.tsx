@@ -7,16 +7,25 @@ export default function LoginPage() {
     const { loginUser } = useAuth();
     const [username, setUsername] = useState<string>('');
     const [password, setPassword] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (!username) {
-            toast.error("Username is required");    
+            toast.error("Username is required");
+            return;    
         }
         if (!password) {
             toast.error("Password is required");
+            return;
         }
-        if (username && password) {
-            loginUser(username, password);
+        
+        try {
+            setIsLoading(true);
+            await loginUser(username, password);
+        } catch {
+            toast.error("Login failed");
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -54,10 +63,12 @@ export default function LoginPage() {
                         </div>
                         <a className="font-bold text-md">Forgot password?</a>
                     </div>
-                    <button onClick={handleLogin}
-                        className="w-full text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2"
+                    <button 
+                        onClick={handleLogin}
+                        disabled={isLoading}
+                        className="w-full text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 disabled:opacity-50"
                     >
-                        Sign in
+                        {isLoading ? "Signing in..." : "Sign in"}
                     </button>
                     {/* <button
                         className="w-full border border-gray-300 text-md p-2 rounded-lg mb-6"

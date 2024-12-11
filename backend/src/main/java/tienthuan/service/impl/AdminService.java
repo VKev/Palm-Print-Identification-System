@@ -63,4 +63,9 @@ public class AdminService implements IAdminService {
         }
     }
 
+    @Override
+    public ResponseEntity<?> createStudent() {
+        return null;
+    }
+
 }

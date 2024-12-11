@@ -76,50 +76,50 @@ export default function AccountsManagement() {
 
 
       <div className="mx-20 mt-5">
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border-b">ID</th>
-              <th className="py-2 px-4 border-b">Username</th>
-              <th className="py-2 px-4 border-b">Fullname</th>
-              <th className="py-2 px-4 border-b">Role</th>
-              <th className="py-2 px-4 border-b">Status</th>
-              <th className="py-2 px-4 border-b">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-            currentAccounts.map((account) => (
-              <tr key={account.id}>
-                <td className="py-2 px-4 border-b text-center">{account.id}</td>
-                <td className="py-2 px-4 border-b text-center">{account.username}</td>
-                <td className="py-2 px-4 border-b text-center">{account.fullname}</td>
-                <td className="py-2 px-4 border-b text-center">{account.role}</td>
-                <td className="py-2 px-4 border-b text-center">
-                  {
-                    account.isEnable ?
-                    <span className="bg-green-100 text-green-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-300">
-                      Active
-                    </span> :
-                    <span className="bg-red-100 text-red-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-red-900 dark:text-red-300">
-                      Disable
-                    </span>
-                  }
-                </td>
-                <td className="py-2 px-4 border-b text-center">
-                  <button title='Edit' className='text-sm text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg px-3 py-1.5 text-center me-2'>
-                    <EditIcon fontSize='inherit'/>
-                  </button>
-                  <button title='Disable' className='text-sm text-white bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg px-3 py-1.5 text-center me-2'>
-                    <BlockIcon fontSize='inherit'/>
-                  </button>
-                </td>
-              </tr>
-            ))
-            }
-          </tbody>
-        </table>
-      </div>
+  <div className="overflow-x-auto shadow-md sm:rounded-lg">
+    <table className="min-w-full bg-white">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">ID</th>
+          <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Username</th>
+          <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Fullname</th>
+          <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Role</th>
+          <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Status</th>
+          <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Action</th>
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-200">
+        {currentAccounts.map((account) => (
+          <tr key={account.id} className="hover:bg-gray-100">
+            <td className="py-4 px-6 text-sm font-medium text-gray-900 text-center">{account.id}</td>
+            <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.username}</td>
+            <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.fullname}</td>
+            <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.role}</td>
+            <td className="py-4 px-6 text-sm text-center">
+              {account.isEnable ? (
+                <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-300">
+                  Active
+                </span>
+              ) : (
+                <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-red-900 dark:text-red-300">
+                  Disable
+                </span>
+              )}
+            </td>
+            <td className="py-4 px-6 text-sm text-center">
+              <button title="Edit" className="text-sm text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg px-3 py-1.5 text-center me-2">
+                <EditIcon fontSize="inherit" />
+              </button>
+              <button title="Disable" className="text-sm text-white bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg px-3 py-1.5 text-center me-2">
+                <BlockIcon fontSize="inherit" />
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
 
       <div className="flex justify-center mt-4">
         <button

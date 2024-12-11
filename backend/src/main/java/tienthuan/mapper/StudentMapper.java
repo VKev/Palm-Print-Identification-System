@@ -12,7 +12,8 @@ public class StudentMapper {
                 .id(student.getId())
                 .studentCode(student.getStudentCode())
                 .studentName(student.getStudentName())
-                .palmPrintImages(student.getPalmPrintImages())
+                .isRegistered(student.getIsRegistered())
+                //.palmPrintImages(student.getPalmPrintImages())
                 .build();
     }
 

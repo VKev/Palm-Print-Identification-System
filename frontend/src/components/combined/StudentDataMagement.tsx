@@ -1,24 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SearchIcon from '@mui/icons-material/Search';
 import SourceIcon from '@mui/icons-material/Source';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
+import { Student } from "../../models/Student";
+import useAxios from "../../utils/useAxios";
+import API from "../../config/API";
+import HttpStatus from "../../config/HttpStatus";
 
-const sampleData = Array.from({ length: 100 }, (_, index) => ({
-  id: index + 1,
-  studentCode: `user${index + 1}`,
-  fullname: `User Fullname ${index + 1}`,
-  role: 'Staff',
-  status: index % 2 === 0 ? 'Active' : 'Inactive',
-}));
 
 export default function StudentDataMagement() {
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const accountsPerPage = 15;
+  const api = useAxios();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [studentData, setStudentData] = useState<Student[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await api.get(API.Admin.GET_STUDENT_DATA);
+      if (response.status === HttpStatus.OK) {
+        setStudentData(response.data);
+      }
+    }
+    fetchData().catch(console.error);
+  }, [])
+
+  const accountsPerPage = 7;
   const indexOfLastAccount = currentPage * accountsPerPage;
   const indexOfFirstAccount = indexOfLastAccount - accountsPerPage;
-  const currentAccounts = sampleData.slice(indexOfFirstAccount, indexOfLastAccount);
-  const totalPages = Math.ceil(sampleData.length / accountsPerPage);
+  const currentAccounts = studentData.slice(indexOfFirstAccount, indexOfLastAccount);
+  const totalPages = Math.ceil(studentData.length / accountsPerPage);
 
   return (
     <div>
@@ -53,34 +63,37 @@ export default function StudentDataMagement() {
 
 
       <div className="mx-20 mt-5">
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border-b">ID</th>
-              <th className="py-2 px-4 border-b">Student code</th>
-              <th className="py-2 px-4 border-b">Fullname</th>
-              <th className="py-2 px-4 border-b">Status</th>
-              <th className="py-2 px-4 border-b">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentAccounts.map((account) => (
-              <tr key={account.id}>
-                <td className="py-2 px-4 border-b text-center">{account.id}</td>
-                <td className="py-2 px-4 border-b text-center">{account.studentCode}</td>
-                <td className="py-2 px-4 border-b text-center">{account.fullname}</td>
-                <td className="py-2 px-4 border-b text-center">{account.status}</td>
-                <td className="py-2 px-4 border-b text-center">
-                  <button title='View palm print images  ' className='text-sm text-white bg-gradient-to-r from-green-400 via-green-500 to-green-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-500 font-medium rounded-lg px-3 py-1.5 text-center me-2'>
-                    <span className="align-middle">
-                      <SourceIcon fontSize='inherit' /> 
-                    </span> 
-                  </button>
-                </td>
+        <div className="overflow-x-auto shadow-md sm:rounded-lg">
+          <table className="min-w-full bg-white">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">ID</th>
+                <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Student code</th>
+                <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Fullname</th>
+                <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Status</th>
+                <th className="py-3 px-6 text-xs font-medium tracking-wider text-center text-gray-700 uppercase">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentAccounts.map((account) => (
+                <tr key={account.id} className="hover:bg-gray-100">
+                  <td className="py-4 px-6 text-sm font-medium text-gray-900 text-center">{account.id}</td>
+                  <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.studentCode}</td>
+                  <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.studentName}</td>
+                  <td className={`py-4 px-6 text-sm text-center ${account.isRegistered ? 'text-green-500' : 'text-red-500'}`}>
+                    {account.isRegistered ? "✅ Registered" : "❌ Not Registered"}
+                  </td>                  <td className="py-4 px-6 text-sm text-center">
+                    <button title="View palm print images" className="text-sm text-white bg-gradient-to-r from-green-400 via-green-500 to-green-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-500 font-medium rounded-lg px-3 py-1.5 text-center me-2">
+                      <span>
+                        <SourceIcon fontSize="inherit" />
+                      </span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="flex justify-center mt-4">

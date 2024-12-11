@@ -7,9 +7,10 @@ import LoadEffect from './LoadEffect';
 import DeviceNameIdentifier from "./DeviceNameIdentifier";
 import useAxios from "../../utils/useAxios";
 import API from "../../config/API";
-import { CameraMode } from "../../models/PalmPrint";
+import { CameraMode, RecognitionResult, VideoUploadedResponse } from "../../models/PalmPrint";
 import HttpStatus from "../../config/HttpStatus";
 import { v4 as uuidv4 } from 'uuid';
+import { FileType, ImageFile } from "../../models/Student";
 
 // const DEFAULT_MP4_NAME = "recorded-video.mp4";
 
@@ -18,6 +19,8 @@ type Props = {
     maxWidth: string;
     cameraMode: string;
     studentCode?: string | null;
+    setSelectedImages: (imagesFiles: ImageFile[]) => void;
+    setRecognitionResult: (recognitionResult: RecognitionResult | null) => void;
 }
 
 
@@ -32,6 +35,8 @@ export default function HandRecognizer(cameraProps: Props) {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const handposeModelRef = useRef<handpose.HandPose | null>(null);
+    const [isHandlingVideo, setIsHandlingVideo] = useState<boolean>(false);
+    const [videoUploadedResponse, setVideoUploadedResponse] = useState<VideoUploadedResponse | null>(null);
 
 
     useEffect(() => {
@@ -51,17 +56,33 @@ export default function HandRecognizer(cameraProps: Props) {
     }, []);
 
     const sendVideoToServer = async (videoBlob: Blob, studentCode: string) => {
-        const urlServer = cameraProps.cameraMode === CameraMode.REGISTRATION ? 
-            API.Staff.UPLOAD_PALM_PRINT_VIDEO_REGISTRATION + studentCode : 
-            API.Staff.UPLOAD_PALM_PRINT_VIDEO_RECOGNITION;
+        switch(cameraProps.cameraMode) {
+            case CameraMode.REGISTRATION:
+                uploadVideoForRegistration(videoBlob, studentCode);
+                break;
+            case CameraMode.RECOGNITION:
+                recognizePalmPrint(videoBlob);
+                break;
+            default:
+                toast.error('Invalid camera mode');
+                break;
+        }
+    };
 
+    const recognizePalmPrint = async (videoBlob: Blob) => {
+        setIsHandlingVideo(true);
         const formData = new FormData();
         formData.append('video', videoBlob, uuidv4()+'.mp4');
-
         try {
-            const response = await api.post(urlServer, formData);
+            const response = await api.post(API.Staff.RECOGNIZE_PALM_PRINT_BY_VIDEO, formData);
             if (response.status === HttpStatus.OK) {
-                toast.success('Video uploaded successfully');
+                //console.log(response.data);
+                //setVideoUploadedResponse(response.data);
+                // cameraProps.setSelectedImages(response.data.base64Images.map(
+                //     (image: string) => ({ file: null, base64: image, isSelected: false, type: FileType.BASE64 })
+                // ));
+                cameraProps.setRecognitionResult(response.data);
+                toast.success(response.data.student_info.studentCode + " - "+ response.data.student_info.studentName);
             }
             else {
                 toast.error('Error uploading video');
@@ -70,10 +91,38 @@ export default function HandRecognizer(cameraProps: Props) {
         catch (error: any) {
             toast.error('Error uploading video:', error);
         }
-    };
+        finally {
+            setIsHandlingVideo(false);
+        }
+    }
+
+    const uploadVideoForRegistration = async (videoBlob: Blob, studentCode: string) => {
+        setIsHandlingVideo(true);
+        const formData = new FormData();
+        formData.append('video', videoBlob, uuidv4()+'.mp4');
+        try {
+            const response = await api.post(API.Staff.UPLOAD_PALM_PRINT_VIDEO_REGISTRATION + studentCode, formData);
+            if (response.status === HttpStatus.OK) {
+                console.log(response.data);
+                setVideoUploadedResponse(response.data);
+                cameraProps.setSelectedImages(response.data.base64Images.map(
+                    (image: string) => ({ file: null, base64: image, isSelected: false, type: FileType.BASE64 })
+                ));
+                toast.success(response.data.message);
+            }
+            else {
+                toast.error('Error uploading video');
+            }
+        } 
+        catch (error: any) {
+            toast.error('Error uploading video:', error);
+        }
+        finally {
+            setIsHandlingVideo(false);
+        }
+    }
 
     const detectHand = useCallback(async () => {
-
         if (videoRef.current && handposeModelRef.current) {
             const predictions = await handposeModelRef.current.estimateHands(videoRef.current);
             const isHandDetected = predictions.length > 0;
@@ -82,8 +131,7 @@ export default function HandRecognizer(cameraProps: Props) {
             if (isHandDetected) {
                 setHandDetectionTime(prevTime => prevTime + 100);  // ms
             }
-            else {
-                // reset
+            else { // reset
                 setHandDetectionTime(0);
                 setHandDetected(false)
             }
@@ -100,7 +148,6 @@ export default function HandRecognizer(cameraProps: Props) {
                 }
             }
         }
-
     }, [handDetectionTime, cameraProps.studentCode]);
 
     useEffect(() => {
@@ -172,65 +219,81 @@ export default function HandRecognizer(cameraProps: Props) {
     }, []);
 
     return (
-        <div  >
-            <div>
-                <div>
-                    <button className='text-black bg-gradient-to-r from-yellow-300 via-yellow-300 to-yellow-300 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-yellow-300 dark:focus:ring-yellow-500 font-medium rounded-lg text-sm px-4 py-2 text-center'
-                        onClick={() => startRecording()} disabled={recording}>
-                        &nbsp;&nbsp;&nbsp;
-                        <RadioButtonCheckedIcon color="error" /> {recording ? 'Recording...' : 'Start Recording'}
-                        &nbsp;&nbsp;&nbsp;
+        <div className="container mx-auto px-4 max-w-4xl">
+            <div className="space-y-8">
+                {/* Recording Button Section */}
+                <div className="flex justify-center">
+                    <button 
+                        className={`
+                            flex items-center space-x-2 
+                            px-6 py-3 
+                            text-black font-semibold rounded-lg
+                            transition-all duration-300
+                            ${recording 
+                                ? 'bg-red-400 hover:bg-red-500' 
+                                : 'bg-gradient-to-r from-yellow-300 to-yellow-400 hover:from-yellow-400 hover:to-yellow-500'
+                            }
+                            focus:ring-4 focus:outline-none focus:ring-yellow-300
+                            shadow-lg hover:shadow-xl
+                        `}
+                        onClick={() => startRecording()} 
+                        disabled={recording}
+                    >
+                        <RadioButtonCheckedIcon 
+                            className={recording ? 'animate-pulse' : ''} 
+                            color="error" 
+                        />
+                        <span>{recording ? 'Recording...' : 'Start Recording'}</span>
                     </button>
-
                 </div>
-
-                <p className='text-2xl mb-5 mt-4'>
+    
+                {/* Status Message */}
+                <p className="text-2xl text-center font-medium text-gray-700 
+                             animate-fade-in">
                     {recording
                         ? handDetected
-                            ? `Hand detected for ${(handDetectionTime / 1000).toFixed(1)} seconds...`
-                            : "Waiting for hand detection..."
+                            ? <span className="text-green-600">
+                                Hand detected for {(handDetectionTime / 1000).toFixed(1)} seconds...
+                              </span>
+                            : <span className="text-yellow-600">
+                                Waiting for hand detection...
+                              </span>
                         : videoUrl
-                            ? "Recording complete. Register successfully."
-                            : "Press 'Start Recording' to begin."}
+                            ? <span className="text-blue-600">
+                                Recording complete. Register successfully.
+                              </span>
+                            : <span className="text-gray-500">
+                                Press 'Start Recording' to begin.
+                              </span>
+                    }
                 </p>
-
-                <div > 
-                    {/* <video
-                        className="border-dashed border-2 border-gray-300 rounded-lg"
-                        ref={videoRef}
-                        autoPlay
-                        muted
-                        style={cameraSize}
-                        // transform: 'scaleX(-1)' { width: '100%', maxWidth: '700px' }
-                    /> */}
-                    {isLoading && (
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)'
-                        }}>
+    
+                {/* Video Section */}
+                <div className="relative">
+                    {(isLoading || isHandlingVideo) && (
+                        <div className="absolute inset-0 bg-white/80 
+                                      backdrop-blur-sm flex items-center justify-center
+                                      z-10 rounded-lg transition-all duration-300">
                             <LoadEffect />
                         </div>
                     )}
-
-                    <div className="flex justify-center">
+    
+                    <div className="flex flex-col items-center space-y-4">
                         <video
-                            className="border-dashed border-2 border-gray-300 rounded-lg"
+                            className="rounded-lg border-2 border-dashed border-gray-300
+                                     shadow-lg hover:shadow-xl transition-shadow duration-300
+                                     bg-gray-50"
                             ref={videoRef}
                             autoPlay
                             muted
-                            style={{width: cameraProps.width, maxWidth: cameraProps.maxWidth}}
-                        // transform: 'scaleX(-1)' { width: '100%', maxWidth: '700px' }
+                            style={{
+                                width: cameraProps.width,
+                                maxWidth: cameraProps.maxWidth
+                            }}
                         />
-                    </div>
-                    <div>
-                        <DeviceNameIdentifier />
+                        <div>
+                            <DeviceNameIdentifier />
+                        </div>
                     </div>
                 </div>
             </div>

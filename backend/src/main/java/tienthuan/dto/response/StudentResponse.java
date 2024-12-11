@@ -22,7 +22,9 @@ public class StudentResponse {
     @JsonProperty("studentName")
     private String studentName;
 
-    @JsonProperty("palmPrintImages")
-    private Collection<PalmPrintImage> palmPrintImages;
+    @JsonProperty("isRegistered")
+    private Boolean isRegistered;
+//    @JsonProperty("palmPrintImages")
+//    private Collection<PalmPrintImage> palmPrintImages;
 
 }
