@@ -89,13 +89,14 @@ public class StaffController {
     }
 
 
-    @PostMapping("/recognize-palm-print")
+    @PostMapping("/recognize-palm-print/{userId}")
     public ResponseEntity<?> recognizePalmPrint(
+            @RequestParam("userId") Long userId,
             @Parameter(description = "Video file", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestParam("video")
             MultipartFile videoFile
     ) {
-        return staffService.recognizePalmPrint(videoFile);
+        return staffService.recognizePalmPrint(userId, videoFile);
     }
 
     @PostMapping("/test-recognition-palm-print")
@@ -113,6 +114,9 @@ public class StaffController {
         return (String) response.getBody();
     }
 
-
+    @GetMapping("/history-logs/{userId}")
+    public ResponseEntity<?> getHistoriesByUser(@PathVariable("userId") Long userId) {
+        return staffService.getHistoriesByUser(userId);
+    }
 
 }

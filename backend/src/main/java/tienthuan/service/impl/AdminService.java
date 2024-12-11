@@ -7,9 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import tienthuan.dto.request.RegisterRequest;
+import tienthuan.dto.request.StudentCreationRequest;
 import tienthuan.dto.response.*;
 import tienthuan.mapper.StudentMapper;
 import tienthuan.mapper.UserMapper;
+import tienthuan.model.Student;
 import tienthuan.model.User;
 import tienthuan.model.fixed.Role;
 import tienthuan.repository.StudentRepository;
@@ -64,8 +66,15 @@ public class AdminService implements IAdminService {
     }
 
     @Override
-    public ResponseEntity<?> createStudent() {
-        return null;
+    public ResponseEntity<?> createStudent(StudentCreationRequest studentCreationRequest) {
+        try {
+            var savedStudent = studentRepository.save(studentMapper.toEntity(studentCreationRequest));
+
+            return new ResponseEntity<>(studentMapper.toResponse(savedStudent), HttpStatus.OK);
+        }
+        catch (Exception exception) {
+            return new ResponseEntity<>(new ErrorResponse("Some error occur when creating a student!"), HttpStatus.BAD_REQUEST);
+        }
     }
 
 }

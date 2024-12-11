@@ -70,7 +70,7 @@ test_batch = args.test_batch
 persistent_workers=True
 pin_memory=True
 # continue_checkpoint = r"checkpoints/fine_tuned_mamba_vision_T_latest_19.pth"
-continue_checkpoint = r"checkpoints/checkpoint_epoch_78.pth"
+continue_checkpoint = r"checkpoints/checkpoint_epoch_79.pth"
 # continue_checkpoint = r""
 wandb.init(
     # set the wandb project where this run will be logged
@@ -83,9 +83,9 @@ wandb.init(
 )
 
 if test:
-    val_batch_size = 4
-    test_batch = 4
-    batch_size = 4
+    val_batch_size = 8
+    test_batch = 8
+    batch_size = 8
     persistent_workers=False
     pin_memory=False
     n_negatives = 26

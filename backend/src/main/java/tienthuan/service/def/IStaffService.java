@@ -1,6 +1,7 @@
 package tienthuan.service.def;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -14,13 +15,15 @@ public interface IStaffService {
 
     ResponseEntity<?> uploadFilterBackgroundCutImages(MultipartFile[] files);
 
-    ResponseEntity<?> recognizePalmPrint(MultipartFile videoFile);
+    ResponseEntity<?> recognizePalmPrint(Long userId, MultipartFile videoFile);
 
     ResponseEntity<?> recognizePalmPrint(MultipartFile[] videoFile);
 
     ResponseEntity<?> registerInference(String studentCode, MultipartFile[] files);
 
     ResponseEntity<?> validateStudentCode(String studentCode);
+
+    ResponseEntity<?> getHistoriesByUser(Long userId);
 
     ResponseEntity<?> testAI();
 

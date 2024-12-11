@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tienthuan.dto.request.RegisterRequest;
+import tienthuan.dto.request.StudentCreationRequest;
 import tienthuan.dto.response.StudentResponse;
 import tienthuan.dto.response.UserResponse;
 import tienthuan.service.def.IAdminService;
@@ -32,4 +33,8 @@ public class AdminController {
         return adminService.registerStaffAccount(registerRequest);
     }
 
+    @PostMapping("/student-data/create")
+    public ResponseEntity<?> createStudent(@RequestBody StudentCreationRequest studentCreationRequest) {
+        return adminService.createStudent(studentCreationRequest);
+    }
 }

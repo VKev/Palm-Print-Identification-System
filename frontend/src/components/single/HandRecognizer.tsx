@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as handpose from '@tensorflow-models/handpose';
 import * as tf from '@tensorflow/tfjs';
@@ -11,14 +12,14 @@ import { CameraMode, RecognitionResult, VideoUploadedResponse } from "../../mode
 import HttpStatus from "../../config/HttpStatus";
 import { v4 as uuidv4 } from 'uuid';
 import { FileType, ImageFile } from "../../models/Student";
-
-// const DEFAULT_MP4_NAME = "recorded-video.mp4";
+import { UserProfile } from "../../models/User";
 
 type Props = {
     width: string;
     maxWidth: string;
     cameraMode: string;
     studentCode?: string | null;
+    userProfile?: UserProfile | null;
     setSelectedImages: (imagesFiles: ImageFile[]) => void;
     setRecognitionResult: (recognitionResult: RecognitionResult | null) => void;
 }
@@ -74,7 +75,7 @@ export default function HandRecognizer(cameraProps: Props) {
         const formData = new FormData();
         formData.append('video', videoBlob, uuidv4()+'.mp4');
         try {
-            const response = await api.post(API.Staff.RECOGNIZE_PALM_PRINT_BY_VIDEO, formData);
+            const response = await api.post(API.Staff.RECOGNIZE_PALM_PRINT_BY_VIDEO + cameraProps.userProfile?.id , formData);
             if (response.status === HttpStatus.OK) {
                 //console.log(response.data);
                 //setVideoUploadedResponse(response.data);
@@ -162,13 +163,11 @@ export default function HandRecognizer(cameraProps: Props) {
     }, [detectHand])
 
     const startRecording = useCallback(async () => {
-
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
             }
-
             const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
 
@@ -178,9 +177,7 @@ export default function HandRecognizer(cameraProps: Props) {
                 const blob = new Blob(chunks, { type: 'video/mp4' });
                 const url = URL.createObjectURL(blob);
                 setVideoUrl(url);
-                // downloadVideo();
             };
-
             mediaRecorder.start();
             //setRecording(true);
             setHandDetectionTime(0);
@@ -191,18 +188,8 @@ export default function HandRecognizer(cameraProps: Props) {
 
     }, []);
 
-    // const downloadVideo = () => {
-    //     if (videoUrl) {
-    //         const a = document.createElement('a');
-    //         a.href = videoUrl;
-    //         //a.download = DEFAULT_MP4_NAME;
-    //         a.click();
-    //     }
-    // };
-
     useEffect(() => {
         const videoElement = videoRef.current;
-
         const handleLoadedData = () => {
             setIsLoading(false);
         };
@@ -210,7 +197,6 @@ export default function HandRecognizer(cameraProps: Props) {
         if (videoElement) {
             videoElement.addEventListener('loadeddata', handleLoadedData);
         }
-
         return () => {
             if (videoElement) {
                 videoElement.removeEventListener('loadeddata', handleLoadedData);

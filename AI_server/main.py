@@ -123,7 +123,7 @@ def background_cutt_batch():
     base64_images = data['images']
     # print(data)
     images = decode_base64_images(base64_images)
-    background_cut_images = background_cut_batch(images, 0.475)
+    background_cut_images = background_cut_batch(images, 0.6)
     
     # roi_cut_image = roicut(background_cut_image)
 
@@ -156,7 +156,7 @@ def roi_cut():
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
     final_image = preprocess.enhance_pilimages(darken_images, 1.5)
 
-    # background_cut_images = background_cut(images, 0.7)
+    # background_cut_images = background_cut(images, 0.6)
     # for idx, img in enumerate(roi_cut_images):
     #     filename = f"processed_image_{idx + 1}.png"
     #     save_path = os.path.join(current_directory, filename)
@@ -204,7 +204,7 @@ def cosine_search():
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
     images = decode_base64_images(base64_images)
-    background_cut_images = background_cut_batch(images, 0.475)
+    background_cut_images = background_cut_batch(images, 0.6)
     background_cut_images = [img.convert('RGB') for img in background_cut_images]
     roi_cut_images = roicut(background_cut_images)
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
@@ -228,7 +228,7 @@ def euclidean_search():
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
     images = decode_base64_images(base64_images)
-    background_cut_images = background_cut(images, 0.7)
+    background_cut_images = background_cut_batch(images, 0.6)
     background_cut_images = [img.convert('RGB') for img in background_cut_images]
     roi_cut_images = roicut(background_cut_images)
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
