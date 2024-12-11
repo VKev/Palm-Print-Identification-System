@@ -15,7 +15,7 @@ import java.util.*;
 public class PalmPrintRecognitionAiAPI {
 
     private final HttpHeaders headers = new HttpHeaders();
-    private final String BASE_URL = "https://7662-112-197-32-145.ngrok-free.app/"; // "http://localhost:5000"
+    private final String BASE_URL = "https://0412-118-69-69-187.ngrok-free.app"; // "http://localhost:5000"
 
     public PalmPrintRecognitionAiAPI () {
         this.headers.set("Content-Type", "application/json");

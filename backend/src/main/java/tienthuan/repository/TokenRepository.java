@@ -12,6 +12,7 @@ import tienthuan.model.Token;
 import tienthuan.model.User;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -27,7 +28,7 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
                     "ON t.user.id = u.id " +
                     "WHERE u.id =:userId AND (t.expired = false OR t.revoked = false)"
     )
-    Collection<Token> findAllValidTokenByUsername(Long userId);
+    List<Token> findAllValidTokenByUsername(Long userId);
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     @Modifying

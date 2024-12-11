@@ -2,6 +2,7 @@ package tienthuan.service.def;
 
 import org.springframework.http.ResponseEntity;
 import tienthuan.dto.request.RegisterRequest;
+import tienthuan.dto.request.StudentCreationRequest;
 import tienthuan.dto.response.StudentResponse;
 import tienthuan.dto.response.UserResponse;
 
@@ -15,6 +16,6 @@ public interface IAdminService {
 
     ResponseEntity<?> registerStaffAccount(RegisterRequest registerRequest);
 
-    ResponseEntity<?> createStudent();
+    ResponseEntity<?> createStudent(StudentCreationRequest studentCreationRequest);
 
 }

@@ -10,6 +10,7 @@ import { UserProfile } from '../models/User';
 import useAxios from '../utils/useAxios';
 import { useAuth } from '../context/AuthContext';
 import API from '../config/API';
+import HistoryLogging from '../components/combined/HistoryLogging';
 
 type Tab = { id: number; name: string; };
 
@@ -112,6 +113,10 @@ const StaffDashboardPage = () => {
 
                 {
                     activeTab.id === tabs[1].id ? <RegisterPalmPrint /> : null
+                }
+
+                {
+                    activeTab.id === tabs[2].id ? <HistoryLogging user={user} /> : null
                 }
 
             </div>

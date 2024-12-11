@@ -6,6 +6,8 @@ import { Student } from "../../models/Student";
 import useAxios from "../../utils/useAxios";
 import API from "../../config/API";
 import HttpStatus from "../../config/HttpStatus";
+import StudentCreationModal from "../single/StudentCreationModal";
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 
 
 export default function StudentDataMagement() {
@@ -13,6 +15,7 @@ export default function StudentDataMagement() {
   const api = useAxios();
   const [currentPage, setCurrentPage] = useState(1);
   const [studentData, setStudentData] = useState<Student[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,6 +26,12 @@ export default function StudentDataMagement() {
     }
     fetchData().catch(console.error);
   }, [])
+
+  const handleCreateStudent = (newStudent: Student) => {
+    setStudentData((prevStudents) => [...prevStudents, newStudent]);
+  }
+  const handleOpen = () => setIsModalOpen(true);
+  const handleClose = () => setIsModalOpen(false);
 
   const accountsPerPage = 7;
   const indexOfLastAccount = currentPage * accountsPerPage;
@@ -37,11 +46,19 @@ export default function StudentDataMagement() {
       <hr className="mt-5 mb-10" />
 
       <div className='flex justify-between'>
-        <button
-          className='text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2'
-        >
-          <ImportExportIcon />&nbsp; <span className='align-middle'>Import new data</span>
-        </button>
+
+        <div>
+          <button
+            className='text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2'
+          >
+            <ImportExportIcon />&nbsp;<span className='align-middle'>Import new data</span>
+          </button>
+          <button onClick={handleOpen}
+            className='text-white bg-gradient-to-r from-lime-600 via-lime-600 to-lime-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-lime-300 dark:focus:ring-lime-500 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2'
+          >
+            <PersonAddAlt1Icon />&nbsp;<span className='align-middle'>Create student</span>
+          </button>
+        </div>
 
         <div className="flex items-center max-w-md">
           <label htmlFor="simple-search" className="sr-only">Search</label>
@@ -76,7 +93,7 @@ export default function StudentDataMagement() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {currentAccounts.map((account) => (
-                <tr key={account.id} className="hover:bg-gray-100">
+                <tr key={account?.id} className="hover:bg-gray-100">
                   <td className="py-4 px-6 text-sm font-medium text-gray-900 text-center">{account.id}</td>
                   <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.studentCode}</td>
                   <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.studentName}</td>
@@ -113,6 +130,8 @@ export default function StudentDataMagement() {
           Next
         </button>
       </div>
+
+      <StudentCreationModal open={isModalOpen} handleClose={handleClose} onStudentCreated={handleCreateStudent} />
     </div>
   );
 }

@@ -8,11 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import tienthuan.dto.response.*;
+import tienthuan.mapper.HistoryMapper;
 import tienthuan.mapper.StudentMapper;
+import tienthuan.model.History;
 import tienthuan.model.PalmPrintImage;
 import tienthuan.model.Student;
+import tienthuan.repository.HistoryRepository;
 import tienthuan.repository.PalmPrintImageRepository;
 import tienthuan.repository.StudentRepository;
+import tienthuan.repository.UserRepository;
 import tienthuan.service.ai.api.PalmPrintRecognitionAiAPI;
 import tienthuan.service.def.IStaffService;
 import tienthuan.util.ImageUtil;
@@ -28,16 +32,14 @@ import java.util.stream.Collectors;
 public class StaffService implements IStaffService {
 
     private final StudentRepository studentRepository;
-
     private final PalmPrintImageRepository palmPrintImageRepository;
-
     private final PalmPrintRecognitionAiAPI palmPrintRecognitionAiAPI;
-
     private final UploadFileCloudService uploadFileCloudService;
-
+    private final HistoryRepository historyRepository;
     private final VideoUtil videoUtil;
-
     private final StudentMapper studentMapper;
+    private final UserRepository userRepository;
+    private final HistoryMapper historyMapper;
 
 
     @Override
@@ -115,7 +117,7 @@ public class StaffService implements IStaffService {
     }
 
     @Override
-    public ResponseEntity<?> recognizePalmPrint(MultipartFile videoFile) {
+    public ResponseEntity<?> recognizePalmPrint(Long userId, MultipartFile videoFile) {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             Collection<File> extractedImages = videoUtil.extractImages(videoFile);
@@ -132,12 +134,20 @@ public class StaffService implements IStaffService {
             aiRecognitionResponse.setStudentResponse(
                     studentMapper.toResponse(studentRepository.findByStudentCode(aiRecognitionResponse.getMostCommonId()).get())
             );
+            // save history
+            this.saveHistory(userId, aiRecognitionResponse);
             return new ResponseEntity<>(aiRecognitionResponse, HttpStatus.OK);
         }
         catch (Exception exception) {
             log.info("Exception at recognize palm print: " + exception.getMessage());
             return new ResponseEntity<>(new ErrorResponse("Recognize palm print fail!"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private void saveHistory(Long userId, AiRecognitionResponse aiRecognitionResponse) {
+        historyRepository.save(
+                historyMapper.toEntity(userRepository.findById(userId).get(), aiRecognitionResponse)
+        );
     }
 
     private void savePalmPrintImages(Student student, MultipartFile file) {
@@ -209,6 +219,16 @@ public class StaffService implements IStaffService {
                               new StudentValidationResponse(Boolean.FALSE, Boolean.FALSE), HttpStatus.NOT_FOUND
                         )
                 );
+    }
+
+    @Override
+    public ResponseEntity<?> getHistoriesByUser(Long userId) {
+        return new ResponseEntity<>(
+                historyRepository.findByUser(userRepository.findById(userId).get()).stream().map(
+                        historyMapper::toResponse
+                ).collect(Collectors.toList()),
+                HttpStatus.OK
+        );
     }
 
     @Override
