@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import useAxios from "../../utils/useAxios";
 import API from "../../config/API";
 import HttpStatus from "../../config/HttpStatus";
+import { checkStudentCodeFormatDetailed, StudentCodeStatus } from "../../utils/validator";
 
 type Props = {
     open: boolean;
@@ -27,17 +28,23 @@ export default function StudentCreationModal({ open, handleClose, onStudentCreat
             toast.error('All fields are required!');
             return;
         }
-        try {
-            const response = await api.post(API.Admin.CREATE_STUDENT, studentCreationRequest);
-            if (response.status === HttpStatus.OK) {
-                toast.success('Student created successfully!');
-                //console.log(response.data);
-                onStudentCreated(response.data);
-                handleClose();
+        const studentCodeStatus: StudentCodeStatus = checkStudentCodeFormatDetailed(studentCode);
+        if (studentCodeStatus.isValid) {
+            try {
+                const response = await api.post(API.Admin.CREATE_STUDENT, studentCreationRequest);
+                if (response.status === HttpStatus.OK) {
+                    toast.success('Student created successfully!');
+                    //console.log(response.data);
+                    onStudentCreated(response.data);
+                    handleClose();
+                }
+            }
+            catch (error: any) {
+                toast.error(error.response.data.message);
             }
         }
-        catch (error: any) {
-            toast.error(error.response.data.message);
+        else {
+            toast.error(studentCodeStatus.error);
         }
     }
 
@@ -46,7 +53,7 @@ export default function StudentCreationModal({ open, handleClose, onStudentCreat
             <div className="fixed inset-0 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-auto">
                     <div id="modal-title" className="text-2xl font-semibold mb-4">
-                        Create new staff
+                        Add student
                     </div>
                     <hr className='mb-3' />
 

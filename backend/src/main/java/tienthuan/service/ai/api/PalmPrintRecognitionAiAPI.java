@@ -43,7 +43,6 @@ public class PalmPrintRecognitionAiAPI {
     }
 
 
-
     public ResponseEntity<?> testRequestAiServer() {
         RestTemplate restTemplate = new RestTemplate();
         long startTime = System.currentTimeMillis();
@@ -61,24 +60,12 @@ public class PalmPrintRecognitionAiAPI {
         return response;
     }
 
-//    public ResponseEntity<?> registerBackgroundCutV2(Collection<String> base64Images) {
-//        String url = BASE_URL + "/ai/register/backgroundcut";
-//        RestTemplate restTemplate = new RestTemplate();
-//        HttpEntity<Object> requestEntity = new HttpEntity<>(new FramesRequestMultipart(base64Images), headers);
-//        return restTemplate.exchange(url, HttpMethod.POST, requestEntity, Object.class);
-//    }
-
 
     public ResponseEntity<?> registerRoiCut(Collection<byte[]> frames) {
         String url = BASE_URL + "/ai/register/roicut";
         return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
     }
 
-
-    public ResponseEntity<Object> registerInference(String studentCode, Collection<byte[]> frames) {
-        String url = BASE_URL + "/ai/register/inference";
-        return this.exchangeFramesToAiServer(new InferenceRequest(studentCode, frames), url, HttpMethod.POST);
-    }
 
     /*
     {
@@ -94,6 +81,13 @@ public class PalmPrintRecognitionAiAPI {
         return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
     }
 
+    public ResponseEntity<Object> registerInference(String studentCode, Collection<byte[]> frames) {
+        String url = BASE_URL + "/ai/register/inference";
+        return this.exchangeFramesToAiServer(new InferenceRequest(studentCode, frames), url, HttpMethod.POST);
+    }
+
+    /* ---------------------------------- */
+
     public ResponseEntity<Object> recognizePalmPrintCosine(Collection<byte[]> frames) {
         String url = BASE_URL + "/ai/recognize/cosine";
         return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
@@ -105,7 +99,5 @@ public class PalmPrintRecognitionAiAPI {
         HttpEntity<Object> requestEntity = new HttpEntity<>(data, headers);
         return restTemplate.exchange(url, httpMethod, requestEntity, Object.class);
     }
-
-
 
 }

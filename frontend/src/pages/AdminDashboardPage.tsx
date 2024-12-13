@@ -9,6 +9,7 @@ import StudentDataMagement from '../components/combined/StudentDataMagement';
 import API from '../config/API';
 import useAxios from '../utils/useAxios';
 import { useAuth } from '../context/AuthContext';
+import HistoryIcon from '@mui/icons-material/History';
 
 type Tab = { id: number; name: string; };
 
@@ -77,6 +78,15 @@ export default function AdminDashboardPage() {
                             <a className={liItemStyle}>
                                 <ContactPageIcon />
                                 <span className="ms-3">Manage Student Data</span>
+                            </a>
+                        </li>
+                        <li
+                            onClick={() => setActiveTab(tabs[2])}
+                            className={`cursor-pointer ${activeTab?.id === tabs[1].id ? 'bg-gray-200 rounded-lg' : ''}`}
+                        >
+                            <a className={liItemStyle}>
+                                <HistoryIcon />
+                                <span className="ms-3">History Logs</span>
                             </a>
                         </li>
                         <hr />

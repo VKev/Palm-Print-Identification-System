@@ -14,6 +14,7 @@ import tienthuan.mapper.StudentMapper;
 import tienthuan.model.History;
 import tienthuan.model.PalmPrintImage;
 import tienthuan.model.Student;
+import tienthuan.multithread.CloudUploader;
 import tienthuan.repository.HistoryRepository;
 import tienthuan.repository.PalmPrintImageRepository;
 import tienthuan.repository.StudentRepository;
@@ -33,15 +34,15 @@ import java.util.stream.Collectors;
 public class StaffService implements IStaffService {
 
     private final StudentRepository studentRepository;
-    private final PalmPrintImageRepository palmPrintImageRepository;
     private final PalmPrintRecognitionAiAPI palmPrintRecognitionAiAPI;
-    private final UploadFileCloudService uploadFileCloudService;
     private final HistoryRepository historyRepository;
     private final VideoUtil videoUtil;
     private final StudentMapper studentMapper;
     private final UserRepository userRepository;
     private final HistoryMapper historyMapper;
     private final ConstantConfiguration constant;
+    private final PalmPrintImageRepository palmPrintImageRepository;
+    private final UploadFileCloudService uploadFileCloudService;
 
     @Override
     public ResponseEntity<?> uploadPalmPrintImages(String studentCode, MultipartFile[] files) {
@@ -52,9 +53,12 @@ public class StaffService implements IStaffService {
             return new ResponseEntity<>(new ErrorResponse("Student code not found"), HttpStatus.NOT_FOUND);
         }
         else {
-//            for (MultipartFile file : files) {
-//                savePalmPrintImages(student.get(), file);
-//            }
+            // Multi-threading upload files
+            CloudUploader cloudUploader = new CloudUploader(
+                    uploadFileCloudService, palmPrintImageRepository, files, null, student.get()
+            );
+            cloudUploader.start();
+            //-------------------------
             return palmPrintRecognitionAiAPI.registerBackgroundCut(convertMultipartFilesToBase64(files));
         }
     }
@@ -102,8 +106,13 @@ public class StaffService implements IStaffService {
             else {
                 for (File file : extractedImages) {
                     base64Images.add(Files.readAllBytes(file.toPath()));
-                    // savePalmPrintImages(student.get(), file);
                 }
+                // Multi-threading upload files
+                CloudUploader cloudUploader = new CloudUploader(
+                        uploadFileCloudService, palmPrintImageRepository, null, (List<File>) extractedImages, student.get()
+                );
+                cloudUploader.start();
+                //-------------------------
                 List<byte[]> filterBase64Images = base64Images.stream().skip(Math.max(0, base64Images.size() - 30)).toList();
                 return new ResponseEntity<>(
                         new VideoUploadingResponse("Upload and extract palm print video successfully!",
@@ -150,39 +159,6 @@ public class StaffService implements IStaffService {
         historyRepository.save(
                 historyMapper.toEntity(userRepository.findById(userId).get(), aiRecognitionResponse)
         );
-    }
-
-    private void savePalmPrintImages(Student student, MultipartFile file) {
-        try {
-            byte[] compressedImage = ImageUtil.compressImage(file.getBytes());
-            String fileUrlCloud = uploadFileCloudService.uploadFile(file);
-            PalmPrintImage palmPrintImage = PalmPrintImage.builder()
-                    .student(student)
-                    .imagePath(fileUrlCloud)
-                    .image(compressedImage)
-                    .build();
-            palmPrintImageRepository.save(palmPrintImage);
-        }
-        catch (Exception exception) {
-            log.info("Exception at save palm print images: " + exception.getMessage());
-        }
-    }
-
-    private void savePalmPrintImages(Student student, File file) {
-        try {
-            byte[] compressedImage = ImageUtil.compressImage(Files.readAllBytes(file.toPath()));
-            String fileUrlCloud = uploadFileCloudService.uploadFile(file);
-            log.info(fileUrlCloud);
-            PalmPrintImage palmPrintImage = PalmPrintImage.builder()
-                    .student(student)
-                    .image(compressedImage)
-                    .imagePath(fileUrlCloud)
-                    .build();
-            palmPrintImageRepository.save(palmPrintImage);
-        }
-        catch (Exception exception) {
-            log.info("Exception at save palm print images: " + exception.getMessage());
-        }
     }
 
     public Collection<byte[]> convertMultipartFilesToBase64(MultipartFile[] files) {
