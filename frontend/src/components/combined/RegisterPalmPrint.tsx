@@ -242,11 +242,6 @@ export default function RegisterPalmPrint() {
                 {
                     studentValidationResponse?.statusResult && !studentValidationResponse.isRegistered &&
                     <>
-                        {/* <div>
-                            <IconButton onClick={toggleCamera} style={{ color: cameraOn ? 'inherit' : 'red', fontSize: '3rem' }} title="Open/close camera">
-                                {cameraOn ? <VideocamIcon style={{ fontSize: 'inherit' }} /> : <VideocamOffIcon style={{ fontSize: 'inherit' }} />}
-                            </IconButton>
-                        </div> */}
                         <div className="flex items-center mb-4 gap-4">
                             <IconButton
                                 onClick={toggleCamera}

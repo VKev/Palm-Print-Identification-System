@@ -10,6 +10,7 @@ import API from '../config/API';
 import useAxios from '../utils/useAxios';
 import { useAuth } from '../context/AuthContext';
 import HistoryIcon from '@mui/icons-material/History';
+import { toast } from 'react-toastify';
 
 type Tab = { id: number; name: string; };
 
@@ -36,7 +37,7 @@ export default function AdminDashboardPage() {
                 setUser(response.data)
             }
             else {
-                alert('Something went wrong!')
+                toast.error('Something went wrong!')
             }
         }
         fetchData().catch(console.error)
@@ -82,7 +83,7 @@ export default function AdminDashboardPage() {
                         </li>
                         <li
                             onClick={() => setActiveTab(tabs[2])}
-                            className={`cursor-pointer ${activeTab?.id === tabs[1].id ? 'bg-gray-200 rounded-lg' : ''}`}
+                            className={`cursor-pointer ${activeTab?.id === tabs[2].id ? 'bg-gray-200 rounded-lg' : ''}`}
                         >
                             <a className={liItemStyle}>
                                 <HistoryIcon />
@@ -116,6 +117,11 @@ export default function AdminDashboardPage() {
                 {
                     activeTab.id === tabs[1].id ? <StudentDataMagement /> : null
                 }
+
+                {
+                    activeTab.id === tabs[2].id ? null : null
+                }
+
 
             </div>
         </div>

@@ -109,11 +109,14 @@ public class StaffService implements IStaffService {
                 }
                 // Multi-threading upload files
                 CloudUploader cloudUploader = new CloudUploader(
-                        uploadFileCloudService, palmPrintImageRepository, null, (List<File>) extractedImages, student.get()
+                        uploadFileCloudService, palmPrintImageRepository, null,
+                        extractedImages.stream().skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList()
+                        , student.get()
                 );
                 cloudUploader.start();
                 //-------------------------
-                List<byte[]> filterBase64Images = base64Images.stream().skip(Math.max(0, base64Images.size() - 30)).toList();
+                List<byte[]> filterBase64Images = base64Images.stream()
+                        .skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList();
                 return new ResponseEntity<>(
                         new VideoUploadingResponse("Upload and extract palm print video successfully!",
                                 Boolean.TRUE, filterBase64Images), HttpStatus.OK

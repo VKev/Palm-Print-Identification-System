@@ -8,7 +8,7 @@ import API from "../../config/API";
 import HttpStatus from "../../config/HttpStatus";
 import StudentCreationModal from "../single/StudentCreationModal";
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
-
+import StudentDataModal from "../single/StudentDataModal";
 
 export default function StudentDataMagement() {
 
@@ -16,6 +16,18 @@ export default function StudentDataMagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [studentData, setStudentData] = useState<Student[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isStudentDataModalOpen, setIsStudentDataModalOpen] = useState(false);
+
+  const handleOpenStudentDataModal = (student: Student) => {
+    setSelectedStudent(student);
+    setIsStudentDataModalOpen(true);
+  };
+
+  const handleCloseStudentDataModal = () => {
+    setIsStudentDataModalOpen(false);
+    setSelectedStudent(null);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,11 +45,12 @@ export default function StudentDataMagement() {
   const handleOpen = () => setIsModalOpen(true);
   const handleClose = () => setIsModalOpen(false);
 
-  const accountsPerPage = 7;
-  const indexOfLastAccount = currentPage * accountsPerPage;
-  const indexOfFirstAccount = indexOfLastAccount - accountsPerPage;
-  const currentAccounts = studentData.slice(indexOfFirstAccount, indexOfLastAccount);
-  const totalPages = Math.ceil(studentData.length / accountsPerPage);
+
+  const studentsPerPage = 7;
+  const indexOfLastStudent = currentPage * studentsPerPage;
+  const indexOfFirstAccount = indexOfLastStudent - studentsPerPage;
+  const currentStudents = studentData.slice(indexOfFirstAccount, indexOfLastStudent);
+  const totalPages = Math.ceil(studentData.length / studentsPerPage);
 
   return (
     <div>
@@ -92,25 +105,39 @@ export default function StudentDataMagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {currentAccounts.map((account) => (
-                <tr key={account?.id} className="hover:bg-gray-100">
-                  <td className="py-4 px-6 text-sm font-medium text-gray-900 text-center">{account.id}</td>
-                  <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.studentCode}</td>
-                  <td className="py-4 px-6 text-sm text-gray-500 text-center">{account.studentName}</td>
-                  <td className={`py-4 px-6 text-sm text-center ${account.isRegistered ? 'text-green-500' : 'text-red-500'}`}>
-                    {account.isRegistered ? "✅ Registered" : "❌ Not Registered"}
-                  </td>                  <td className="py-4 px-6 text-sm text-center">
-                    <button title="View palm print images" className="text-sm text-white bg-gradient-to-r from-green-400 via-green-500 to-green-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-500 font-medium rounded-lg px-3 py-1.5 text-center me-2">
-                      <span>
-                        <SourceIcon fontSize="inherit" />
-                      </span>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {
+                currentStudents.map((student) => (
+                  <tr key={student?.id} className="hover:bg-gray-100">
+                    <td className="py-4 px-6 text-sm font-medium text-gray-900 text-center">{student.id}</td>
+                    <td className="py-4 px-6 text-sm text-gray-500 text-center">{student.studentCode}</td>
+                    <td className="py-4 px-6 text-sm text-gray-500 text-center">{student.studentName}</td>
+                    <td className={`py-4 px-6 text-sm text-center ${student.isRegistered ? 'text-green-500' : 'text-red-500'}`}>
+                      {student.isRegistered ? "✅ Registered" : "❌ Not Registered"}
+                    </td>                  
+                    <td className="py-4 px-6 text-sm text-center">
+                      <button title="View palm print images" 
+                        className="text-sm text-white bg-gradient-to-r from-green-400 via-green-500 to-green-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-500 font-medium rounded-lg px-3 py-1.5 text-center me-2" 
+                        onClick={() => handleOpenStudentDataModal(student)}
+                        
+                        >
+                        <span>
+                          <SourceIcon fontSize="inherit" />
+                        </span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              }
             </tbody>
           </table>
         </div>
+        {selectedStudent && (
+        <StudentDataModal
+          open={isStudentDataModalOpen}
+          handleClose={handleCloseStudentDataModal}
+          student={selectedStudent}
+        />
+      )}
       </div>
 
       <div className="flex justify-center mt-4">

@@ -8,6 +8,7 @@ export type Student = {
     studentCode: string;
     studentName: string;
     isRegistered: boolean;
+    imagePaths: string[];
 }
 
 export type ImageFile = {

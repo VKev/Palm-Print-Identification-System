@@ -73,14 +73,16 @@ export default function HistoryLogging({ user }: { user: UserProfile | null }) {
                                 <td className="py-4 px-6 text-sm text-gray-500 text-center">{item.occurrenceCount}</td>
                                 <td className="py-4 px-6 text-sm text-gray-500 text-center">{item.score.toFixed(10)}</td>
                                 <td className="py-4 px-6 text-sm text-gray-500 text-center">
-                                    {new Date(item.historyDate).toLocaleString('en-GB', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: false
-                                    })}
+                                    {
+                                        new Date(item.historyDate).toLocaleString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: false
+                                        })
+                                    }
                                 </td>
                             </tr>
                         ))}

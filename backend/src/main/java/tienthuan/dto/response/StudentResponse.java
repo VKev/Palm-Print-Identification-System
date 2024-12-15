@@ -5,6 +5,7 @@ import lombok.*;
 import tienthuan.model.PalmPrintImage;
 
 import java.util.Collection;
+import java.util.List;
 
 @Setter
 @Getter
@@ -24,7 +25,8 @@ public class StudentResponse {
 
     @JsonProperty("isRegistered")
     private Boolean isRegistered;
-//    @JsonProperty("palmPrintImages")
-//    private Collection<PalmPrintImage> palmPrintImages;
+
+    @JsonProperty("imagePaths")
+    private List<String> imagePaths;
 
 }
