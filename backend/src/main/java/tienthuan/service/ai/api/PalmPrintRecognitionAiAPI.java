@@ -15,7 +15,7 @@ import java.util.*;
 public class PalmPrintRecognitionAiAPI {
 
     private final HttpHeaders headers = new HttpHeaders();
-    private final String BASE_URL = "https://bfcc-112-197-32-145.ngrok-free.app"; // "http://localhost:5000"
+    private final String BASE_URL = "https://93cc-14-169-17-26.ngrok-free.app"; // "http://localhost:5000"
 
     public PalmPrintRecognitionAiAPI () {
         this.headers.set("Content-Type", "application/json");
@@ -37,7 +37,7 @@ public class PalmPrintRecognitionAiAPI {
     }
 
     @AllArgsConstructor
-    private static class FramesRequestMultipart {
+    private static class FeatureVectorRequest {
         @JsonProperty("images")
         public Collection<String> frames;
     }
@@ -45,11 +45,7 @@ public class PalmPrintRecognitionAiAPI {
 
     public ResponseEntity<?> testRequestAiServer() {
         RestTemplate restTemplate = new RestTemplate();
-        long startTime = System.currentTimeMillis();
         ResponseEntity<?> response = restTemplate.getForEntity(BASE_URL + "/hello-world", Object.class);
-        long endTime = System.currentTimeMillis();
-        long executionTime = endTime - startTime;
-        log.info("Execution time: {} seconds", executionTime / 1000.0);
         return response;
     }
 
@@ -67,6 +63,13 @@ public class PalmPrintRecognitionAiAPI {
     }
 
 
+    public ResponseEntity<Object> registerInference(String studentCode, Collection<byte[]> frames) {
+        String url = BASE_URL + "/ai/register/inference";
+        return this.exchangeFramesToAiServer(new InferenceRequest(studentCode, frames), url, HttpMethod.POST);
+    }
+
+    /* ---------------------------------- */
+
     /*
     {
         "accept": true/false,
@@ -81,16 +84,32 @@ public class PalmPrintRecognitionAiAPI {
         return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
     }
 
-    public ResponseEntity<Object> registerInference(String studentCode, Collection<byte[]> frames) {
-        String url = BASE_URL + "/ai/register/inference";
-        return this.exchangeFramesToAiServer(new InferenceRequest(studentCode, frames), url, HttpMethod.POST);
-    }
-
-    /* ---------------------------------- */
-
     public ResponseEntity<Object> recognizePalmPrintCosine(Collection<byte[]> frames) {
         String url = BASE_URL + "/ai/recognize/cosine";
         return this.exchangeFramesToAiServer(new FramesRequest(frames), url, HttpMethod.POST);
+    }
+
+    /*
+    {
+        "feature_vector": {
+            [
+                -0.1908714473247528,
+                -0.5968778729438782,
+                ....
+            ],
+            [
+                -0.1908714473247528,
+                -0.5968778729438782,
+                ....
+            ],...
+        }
+    }
+    */
+    public ResponseEntity<Object> getFeatureVector(Collection<String> frames) {
+        RestTemplate restTemplate = new RestTemplate();
+        HttpEntity<Object> requestEntity = new HttpEntity<>(new FeatureVectorRequest(frames), headers);
+        String url = BASE_URL + "/ai/recognize/cosine-only";
+        return restTemplate.exchange(url, HttpMethod.POST, requestEntity, Object.class);
     }
 
 

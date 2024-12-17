@@ -9,12 +9,16 @@ import tienthuan.dto.request.StudentCreationRequest;
 import tienthuan.dto.response.*;
 import tienthuan.mapper.StudentMapper;
 import tienthuan.mapper.UserMapper;
+import tienthuan.model.PalmPrintImage;
 import tienthuan.model.Student;
 import tienthuan.model.User;
 import tienthuan.model.fixed.Role;
+import tienthuan.multithread.CloudRemover;
+import tienthuan.repository.PalmPrintImageRepository;
 import tienthuan.repository.StudentRepository;
 import tienthuan.repository.UserRepository;
 import tienthuan.service.def.IAdminService;
+import tienthuan.service.def.ICloudinaryService;
 
 import java.util.Collection;
 import java.util.List;
@@ -30,6 +34,10 @@ public class AdminService implements IAdminService {
     private final StudentMapper studentMapper;
 
     private final StudentRepository studentRepository;
+
+    private final PalmPrintImageRepository palmPrintImageRepository;
+
+    private final ICloudinaryService cloudinaryService;
 
     @Override
     public ResponseEntity<Collection<UserResponse>> getAllStaffAccounts() {
@@ -67,11 +75,33 @@ public class AdminService implements IAdminService {
     public ResponseEntity<?> createStudent(StudentCreationRequest studentCreationRequest) {
         try {
             var savedStudent = studentRepository.save(studentMapper.toEntity(studentCreationRequest));
-
             return new ResponseEntity<>(studentMapper.toResponse(savedStudent), HttpStatus.OK);
         }
         catch (Exception exception) {
             return new ResponseEntity<>(new ErrorResponse("Some error occur when creating a student!"), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> deleteStudent(String studentCode) {
+        try {
+            Student student = studentRepository.findByStudentCode(studentCode).orElseThrow();
+            studentRepository.deleteById(student.getId());
+            List<PalmPrintImage> palmPrintImages = palmPrintImageRepository.findAllByStudent(student);
+            palmPrintImageRepository.deleteAllByStudent(student);
+            // Multi thread delete file on cloud
+            if (palmPrintImages != null && !palmPrintImages.isEmpty()) {
+                CloudRemover cloudRemover = new CloudRemover(
+                        cloudinaryService,
+                        palmPrintImages.stream().map(PalmPrintImage::getImagePath).toList()
+                );
+                cloudRemover.start();
+            }
+            // ---------------
+            return new ResponseEntity<>(studentMapper.toResponse(student), HttpStatus.OK);
+        }
+        catch (Exception exception) {
+            return new ResponseEntity<>(new ErrorResponse("Some error occur when deleting a student!"), HttpStatus.BAD_REQUEST);
         }
     }
 

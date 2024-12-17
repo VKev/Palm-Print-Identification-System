@@ -25,6 +25,7 @@ const API = {
         GET_STUDENT_DATA: '/api/admin/student-data/get-all',
         REGISTER_STAFF_ACCOUNT: '/api/admin/staff-accounts/register',
         CREATE_STUDENT: '/api/admin/student-data/create',
+        DELETE_STUDENT: '/api/admin/student-data/delete-student/',
     }
 
 }

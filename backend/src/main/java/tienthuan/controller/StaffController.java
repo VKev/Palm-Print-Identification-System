@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import tienthuan.dto.request.FrameRecognitionRequest;
 import tienthuan.service.def.IStaffService;
 
 
@@ -98,6 +99,15 @@ public class StaffController {
         return staffService.recognizePalmPrint(userId, videoFile);
     }
 
+    @PostMapping("/recognize-palm-print-by-frames/{uuid}")
+    public ResponseEntity<?> recognizePalmPrint(
+            @PathVariable("uuid") String uuid,
+            @RequestBody FrameRecognitionRequest frameRecognitionRequest
+    ) {
+        return staffService.recognizePalmPrint(uuid, frameRecognitionRequest);
+    }
+
+
     @PostMapping("/test-recognition-palm-print")
     public Object testRecognitionPalmPrint(
             @Parameter(description = "Image files", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
@@ -117,5 +127,4 @@ public class StaffController {
     public ResponseEntity<?> getHistoriesByUser(@PathVariable("userId") Long userId) {
         return staffService.getHistoriesByUser(userId);
     }
-
 }

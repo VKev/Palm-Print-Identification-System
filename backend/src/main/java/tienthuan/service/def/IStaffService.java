@@ -2,6 +2,7 @@ package tienthuan.service.def;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import tienthuan.dto.request.FrameRecognitionRequest;
 
 public interface IStaffService {
 
@@ -14,6 +15,8 @@ public interface IStaffService {
     ResponseEntity<?> recognizePalmPrint(Long userId, MultipartFile videoFile);
 
     ResponseEntity<?> recognizePalmPrint(MultipartFile[] videoFile);
+
+    ResponseEntity<?> recognizePalmPrint(String uuid, FrameRecognitionRequest frameRecognitionRequest);
 
     ResponseEntity<?> registerInference(String studentCode, MultipartFile[] files);
 

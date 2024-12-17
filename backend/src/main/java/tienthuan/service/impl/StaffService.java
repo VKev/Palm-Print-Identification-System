@@ -8,12 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import tienthuan.configuration.ConstantConfiguration;
+import tienthuan.dto.request.FrameRecognitionRequest;
 import tienthuan.dto.response.*;
 import tienthuan.mapper.HistoryMapper;
 import tienthuan.mapper.StudentMapper;
-import tienthuan.model.History;
-import tienthuan.model.PalmPrintImage;
-import tienthuan.model.Student;
 import tienthuan.multithread.CloudUploader;
 import tienthuan.repository.HistoryRepository;
 import tienthuan.repository.PalmPrintImageRepository;
@@ -21,8 +19,10 @@ import tienthuan.repository.StudentRepository;
 import tienthuan.repository.UserRepository;
 import tienthuan.service.ai.api.PalmPrintRecognitionAiAPI;
 import tienthuan.service.def.IStaffService;
-import tienthuan.util.ImageUtil;
 import tienthuan.util.VideoUtil;
+import tienthuan.util.custom.FeatureVector;
+import tienthuan.util.custom.FeatureVectorStorage;
+
 import java.nio.file.Files;
 import java.io.File;
 import java.util.*;
@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StaffService implements IStaffService {
 
+    public static final FeatureVectorStorage featureVectorStorage = new FeatureVectorStorage();
+
     private final StudentRepository studentRepository;
     private final PalmPrintRecognitionAiAPI palmPrintRecognitionAiAPI;
     private final HistoryRepository historyRepository;
@@ -42,7 +44,9 @@ public class StaffService implements IStaffService {
     private final HistoryMapper historyMapper;
     private final ConstantConfiguration constant;
     private final PalmPrintImageRepository palmPrintImageRepository;
-    private final UploadFileCloudService uploadFileCloudService;
+    private final CloudinaryService cloudinaryService;
+
+    private final String FEATURE_VECTOR_STATUS_PENDING = "PENDING";
 
     @Override
     public ResponseEntity<?> uploadPalmPrintImages(String studentCode, MultipartFile[] files) {
@@ -55,7 +59,7 @@ public class StaffService implements IStaffService {
         else {
             // Multi-threading upload files
             CloudUploader cloudUploader = new CloudUploader(
-                    uploadFileCloudService, palmPrintImageRepository, files, null, student.get()
+                    cloudinaryService, palmPrintImageRepository, files, null, student.get()
             );
             cloudUploader.start();
             //-------------------------
@@ -108,12 +112,12 @@ public class StaffService implements IStaffService {
                     base64Images.add(Files.readAllBytes(file.toPath()));
                 }
                 // Multi-threading upload files
-                CloudUploader cloudUploader = new CloudUploader(
-                        uploadFileCloudService, palmPrintImageRepository, null,
-                        extractedImages.stream().skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList()
-                        , student.get()
-                );
-                cloudUploader.start();
+//                CloudUploader cloudUploader = new CloudUploader(
+//                        uploadFileCloudService, palmPrintImageRepository, null,
+//                        extractedImages.stream().skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList()
+//                        , student.get()
+//                );
+//                cloudUploader.start();
                 //-------------------------
                 List<byte[]> filterBase64Images = base64Images.stream()
                         .skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList();
@@ -157,6 +161,38 @@ public class StaffService implements IStaffService {
             return new ResponseEntity<>(new ErrorResponse("Recognize palm print fail!"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @Override
+    public ResponseEntity<?> recognizePalmPrint(String uuid, FrameRecognitionRequest frameRecognitionRequest) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            List<String> base64Images = frameRecognitionRequest.getBase64Images();
+            if (base64Images == null || base64Images.isEmpty())
+                return new ResponseEntity<>(new ErrorResponse("No base64 images uploaded"), HttpStatus.BAD_REQUEST);
+            // Remove the last bad hand images
+            base64Images = base64Images.subList(0, base64Images.size() - 5);
+            var aiServeResponse = palmPrintRecognitionAiAPI.getFeatureVector(base64Images).getBody();
+            FeatureVector featureVectors = objectMapper.convertValue(aiServeResponse, FeatureVector.class);
+
+            log.info("Feature vectors: ");
+            featureVectors.forEach(System.out::println);
+
+            if (!featureVectorStorage.containsKey(uuid)) {
+                featureVectorStorage.addVector(uuid, featureVectors);
+                return new ResponseEntity<>(new FeatureVectorResponse(this.FEATURE_VECTOR_STATUS_PENDING), HttpStatus.OK);;
+            }
+            else {
+                // If the feature vector is already existed and Key stored in the storage and enough 30 vectors, send them to ai server
+
+                // return ai response and save history
+            }
+        }
+        catch (Exception exception) {
+            log.error("Exception at recognize palm print by frames: " + exception.getMessage());
+            return new ResponseEntity<>(new ErrorResponse("Recognize palm print by frames fail!"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 
     private void saveHistory(Long userId, AiRecognitionResponse aiRecognitionResponse) {
         historyRepository.save(

@@ -1,4 +1,3 @@
-import HandRecognizer from "../single/HandRecognizer";
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import { IconButton } from '@mui/material';
@@ -6,6 +5,7 @@ import { useState } from "react";
 import { ImageFile } from "../../models/Student";
 import { CameraMode, RecognitionResult } from "../../models/PalmPrint";
 import { UserProfile } from "../../models/User";
+import HandRecognizerV2 from "../single/HandRecognizerV2";
 
 export default function RecognitionPalmPrint({user} : {user: UserProfile | null}) {
 
@@ -25,7 +25,7 @@ export default function RecognitionPalmPrint({user} : {user: UserProfile | null}
 
                 <div>
                     {
-                        cameraOn && <HandRecognizer width={"100%"} maxWidth={"700px"}
+                        cameraOn && <HandRecognizerV2 width={"100%"} maxWidth={"700px"}
                             cameraMode={CameraMode.RECOGNITION}
                             setSelectedImages={setSelectedImages}
                             setRecognitionResult={setRecognitionResult}
@@ -33,11 +33,6 @@ export default function RecognitionPalmPrint({user} : {user: UserProfile | null}
                             />
                     }
 
-                    {/* <div>
-                        <IconButton onClick={toggleCamera} style={{ color: cameraOn ? 'inherit' : 'red', fontSize: '3rem' }} title="Open/close camera">
-                            {cameraOn ? <VideocamIcon style={{ fontSize: 'inherit' }} /> : <VideocamOffIcon style={{ fontSize: 'inherit' }} />}
-                        </IconButton>
-                    </div> */}
                     <div className="flex items-center gap-4">
                         <IconButton
                             onClick={toggleCamera}

@@ -20,7 +20,7 @@ public class ConstantConfiguration {
     public final String LOGOUT_HANDLER_URL = "/api/logout";
 
     // Video extractor properties
-    public final Integer IMAGES_FRAME_JUMP = 6;
+    public final Integer IMAGES_FRAME_JUMP = 4;
     public final Integer FRAMES_LIMITATION = 30;
     public final String IMAGES_EXTENSION_TYPE = ".png";
 
