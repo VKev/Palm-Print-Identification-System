@@ -194,6 +194,43 @@ def register():
     # return jsonify({"feature_vectors": euclidean_distances.cpu().numpy().tolist()}), 200
 
 
+@app.route("/ai/vectorize", methods=["POST"])
+def vectorize():
+    start_time = time.time()
+    current_directory = os.path.dirname(os.path.abspath(__file__)) 
+    save_path = os.path.join(current_directory, 'processed_image.png')
+    print("/ai/vectorize")
+    data = request.json
+    if 'images' not in data:
+        return jsonify({"error": "Images not found in request"}), 400
+    base64_images = data['images']
+    images = decode_base64_images(base64_images)
+    background_cut_images = background_cut_batch(images, 0.6)
+    background_cut_images = [img.convert('RGB') for img in background_cut_images]
+    roi_cut_images = roicut(background_cut_images)
+    darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
+    final_images = preprocess.enhance_pilimages(darken_images, 1.5)
+    final_images = [img.convert('RGB') for img in final_images]
+    batch = torch.stack([transform(img) for img in final_images])
+    with torch.no_grad():
+        result = inference(batch.to(torch.float32).to("cuda"))
+    end_time = time.time()
+    print("Time ",end_time-start_time)
+    return jsonify({"feature_vector": result.cpu().numpy().tolist() })
+
+@app.route("/ai/recognize/cosine-only", methods=["POST"])
+def cosine_only_search():
+    
+    data = request.json
+    if 'feature_vector' not in data:
+        return jsonify({"error": "Feature vector not found in request"}), 400
+    
+    result = data['feature_vector']
+
+    top1 = bulk_cosine_similarity_search(es, "palm-print-index", result)
+    
+    return jsonify(verify_palm_print(top1))
+
 @app.route("/ai/recognize/cosine", methods=["POST"])
 def cosine_search():
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
@@ -256,7 +293,7 @@ def list_all():
 def hello_world():
     return jsonify("hello world")
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     create_palm_print_index()
     # delete_all_documents_in_index(es, "palm-print-index")
     # list_documents_in_index(es , "palm-print-index")

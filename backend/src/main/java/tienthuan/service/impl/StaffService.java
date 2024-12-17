@@ -54,10 +54,10 @@ public class StaffService implements IStaffService {
         }
         else {
             // Multi-threading upload files
-            CloudUploader cloudUploader = new CloudUploader(
-                    uploadFileCloudService, palmPrintImageRepository, files, null, student.get()
-            );
-            cloudUploader.start();
+            // CloudUploader cloudUploader = new CloudUploader(
+            //         uploadFileCloudService, palmPrintImageRepository, files, null, student.get()
+            // );
+            // cloudUploader.start();
             //-------------------------
             return palmPrintRecognitionAiAPI.registerBackgroundCut(convertMultipartFilesToBase64(files));
         }
@@ -108,12 +108,12 @@ public class StaffService implements IStaffService {
                     base64Images.add(Files.readAllBytes(file.toPath()));
                 }
                 // Multi-threading upload files
-                CloudUploader cloudUploader = new CloudUploader(
-                        uploadFileCloudService, palmPrintImageRepository, null,
-                        extractedImages.stream().skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList()
-                        , student.get()
-                );
-                cloudUploader.start();
+                // CloudUploader cloudUploader = new CloudUploader(
+                //         uploadFileCloudService, palmPrintImageRepository, null,
+                //         extractedImages.stream().skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList()
+                //         , student.get()
+                // );
+                // cloudUploader.start();
                 //-------------------------
                 List<byte[]> filterBase64Images = base64Images.stream()
                         .skip(Math.max(0, base64Images.size() - constant.FRAMES_LIMITATION)).toList();
