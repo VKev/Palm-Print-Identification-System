@@ -50,13 +50,7 @@ const HandRecognizerV2 = (cameraProps: Props) => {
     const [initialDetectionTime, setInitialDetectionTime] = useState(0);
     const [showSteadyMessage, setShowSteadyMessage] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-
-    const [currentUUID, setCurrentUUID] = useState<string>(uuidv4());
-    const [capturedFrames, setCapturedFrames] = useState<string[]>([]);
-    const [process, setProcess] = useState<string>(recognitionProcess.STARTED);
-    const [frameCount, setFrameCount] = useState(0);
-    const [isCameraPaused, setIsCameraPaused] = useState(false);
-
+    const vectorList = useRef([]);
 
     useEffect(() => {
         async function initTF() {
@@ -89,20 +83,62 @@ const HandRecognizerV2 = (cameraProps: Props) => {
 
         const base64String = canvas.toDataURL('image/png');
         const formattedBase64 = base64String.replace(/^data:image\/(png|jpg|jpeg);base64,/, '');
-        //console.log(formattedBase64);
-
+        
         // Add to array if less than 30 frames
-        setCapturedFrames(prev => {
-            if (prev.length >= limitCapturedFrames) {
-                // Send to server here with uuid
-                //console.log('Captured 30 frames:', prev);
-                return prev;
-            }
-            return [...prev, formattedBase64];
-        });
+        // setCapturedFrames(prev => {
+        //     if (prev.length >= 30) {
+        //         // Send to server here
+        //         // console.log('Captured 30 frames:', prev);
+        //         return prev;
+        //     }
+        //     return [...prev, formattedBase64];
+        // });
 
         return formattedBase64;
     }, []);
+
+    const sendFrameToAPI = async (imageData) => {
+        try {
+          // Make an async fetch request to your API
+          const response = await fetch("http://localhost:5000/ai/vectorize", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ images: [imageData] }),
+    
+          }).catch((err) => console.error("Error sending frame:", err));
+          if (response.ok) {
+            const result = await response.json();
+            vectorList.current.push(result.feature_vector[0])
+          }
+    
+          if (vectorList.current.length >= 30) {
+            console.log("Logged Responses:", vectorList.current);
+            const requestToCosine = {
+                feature_vector: vectorList.current,
+            };
+            vectorList.current = []; // Clear the list
+            console.log(requestToCosine)
+            const cosineResponse = await fetch("http://localhost:5000/ai/recognize/cosine-only", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestToCosine),
+            });
+            if(cosineResponse.ok){
+                const responseData = await cosineResponse.json(); // Parse JSON response
+                console.log("Response Data:", responseData);
+            }
+          }
+    
+          
+    
+        } catch (err) {
+          console.error("Failed to send frame to API:", err);
+        }
+      };
 
     const detectHand = useCallback(async () => {
         if (videoRef.current && handposeModelRef.current) {
@@ -115,21 +151,16 @@ const HandRecognizerV2 = (cameraProps: Props) => {
                     if (prevTime < readyHandDectectionTime) { // 0.5 seconds
                         return prevTime + 100;
                     }
-                    const frame = captureFrame();
-                    if (frame && !isCameraPaused && frameCount < 30) {
-                        sendFrames(frame);
-                        setFrameCount(prev => prev + 1);
-                        
-                        if (frameCount === 29) {
-                            setIsCameraPaused(true);
-                        }
-                    }
                     setShowSteadyMessage(true);
                     setHandDetectionTime(prevTime => prevTime + 100);
                     return prevTime;
                 });
-            }
+                var framebase64 = captureFrame();
+                var result = await sendFrameToAPI(framebase64);
+            } 
             else {
+                // Clear frames if hand is no longer detected
+                vectorList.current = []
                 setCapturedFrames([]);
                 setInitialDetectionTime(0);
                 setHandDetectionTime(0);

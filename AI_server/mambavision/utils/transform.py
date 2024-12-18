@@ -45,7 +45,7 @@ transform = transforms.Compose(
 augmentation = transforms.Compose(
     [
         transforms.Resize((224, 224)),
-        transforms.RandomRotation(40),
+        transforms.RandomRotation(25),
         transforms.RandomApply(
             [
                 transforms.ColorJitter(
@@ -57,7 +57,7 @@ augmentation = transforms.Compose(
             ],
             p=0.5,
         ),
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomHorizontalFlip(),
         transforms.RandomApply(
             [transforms.RandomResizedCrop(size=224, scale=(0.8, 1.0))], p=0.5
         ),
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     # print(f"Mean: {mean}")
     # print(f"Std: {std}")
 
-    input_directory = r"raw/1"
-    output_directory = r"raw/2"
+    input_directory = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train"
+    output_directory = r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train-aug"
 
     augment_images(input_directory, output_directory)

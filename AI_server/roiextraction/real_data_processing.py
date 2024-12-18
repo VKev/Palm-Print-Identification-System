@@ -3,6 +3,104 @@ import re
 import random
 import shutil
 
+import os
+import shutil
+from collections import defaultdict
+
+def split_images_by_label_and_frames(source_path, n, folder1, folder2):
+    """
+    Splits images by label into chunks of n frames, distributing the first n frames of each label to one folder
+    and the next n frames to another folder.
+
+    Parameters:
+    - source_path (str): The path where the images are located.
+    - n (int): The number of frames to include in each chunk.
+    - folder1 (str): The path to the first folder for query frames.
+    - folder2 (str): The path to the second folder for register frames.
+    """
+    # Ensure the destination folders exist
+    os.makedirs(folder1, exist_ok=True)
+    os.makedirs(folder2, exist_ok=True)
+
+    # Dictionary to hold images by label
+    label_dict = defaultdict(list)
+
+    # Gather and categorize images by label
+    for filename in os.listdir(source_path):
+        if filename.endswith((".jpg", ".jpeg", ".JPG", ".bmp")):
+            label = filename.split("_")[-1].split(".")[0]  # Extract label
+            label_dict[label].append(filename)
+
+    # Sort images within each label
+    for label in label_dict:
+        label_dict[label].sort()
+
+    # Distribute images by n frames for each label
+    for label, images in label_dict.items():
+        for i, image in enumerate(images):
+            source_file = os.path.join(source_path, image)
+            if i < n:
+                destination_file = os.path.join(folder1, image)
+            elif i < 2 * n:
+                destination_file = os.path.join(folder2, image)
+            else:
+                continue  # Skip any images beyond the first 2*n frames
+
+            # Copy the file to the appropriate folder
+            try:
+                shutil.copy(source_file, destination_file)
+                print(f"Copied: {source_file} to {destination_file}")
+            except Exception as e:
+                print(f"Error copying file {source_file}: {e}")
+
+def split_dataset_by_frames(source_path, n, folder1, folder2):
+    """
+    Splits a dataset into two folders, taking n frames of each class for one folder
+    and n frames of different classes for the other folder.
+
+    Parameters:
+    - source_path (str): The path where the images are located.
+    - n (int): The number of frames to include in each chunk.
+    - folder1 (str): The path to the first folder for query frames.
+    - folder2 (str): The path to the second folder for register frames.
+    """
+    # Ensure the destination folders exist
+    os.makedirs(folder1, exist_ok=True)
+    os.makedirs(folder2, exist_ok=True)
+
+    # Dictionary to hold images by label
+    label_dict = defaultdict(list)
+
+    # Gather and categorize images by label
+    for filename in os.listdir(source_path):
+        if filename.endswith((".jpg", ".jpeg", ".JPG", ".bmp")):
+            label = filename.split("_")[-1].split(".")[0]  # Extract label
+            label_dict[label].append(filename)
+
+    # Sort images within each label
+    for label in label_dict:
+        label_dict[label].sort()
+
+    # Separate labels into two groups
+    labels = list(label_dict.keys())
+    labels.sort()  # Ensure consistent order
+    half = len(labels) // 2
+
+    # Assign the first half of labels to folder1 and the second half to folder2
+    for i, label in enumerate(labels):
+        target_folder = folder1 if i < half else folder2
+        for j, image in enumerate(label_dict[label]):
+            if j < n:
+                source_file = os.path.join(source_path, image)
+                destination_file = os.path.join(target_folder, image)
+
+                # Copy the file to the appropriate folder
+                try:
+                    shutil.copy(source_file, destination_file)
+                    print(f"Copied: {source_file} to {destination_file}")
+                except Exception as e:
+                    print(f"Error copying file {source_file}: {e}")
+
 
 def rename_images_by_parent_folder(input_path):
     """
@@ -193,11 +291,12 @@ def split_dataset_into_two(source_path, folder1, folder2):
 # split_images_by_label(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\train", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Query-register-half", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\Register-register-half")
 
 # Example usage
-split_dataset_into_two(
-    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Sapienza-University-test-roi-by-our",
-    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Register-unregister-half",
-    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Query-unregister-half",
-)
+# split_dataset_into_two(
+#     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Sapienza-University-test-roi-by-our",
+#     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Register-unregister-half",
+#     r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\dataset-test\Sapienza University Mobile Palmprint Database(SMPD)\Query-unregister-half",
+# )
+
 
 # move_all_files(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance", r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\non-bg-cut\Real-roi-enhance-test-set")
 
@@ -214,3 +313,18 @@ split_dataset_into_two(
 
 # Example usage
 # rename_images_by_parent_folder(r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Real-bg-cut-rotate-shilf")
+
+
+split_images_by_label_and_frames(
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Roi-bg-cut-enhance-test-set",
+    4,
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\4 frames\Query-register-half",
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\4 frames\Register-register-half",
+)
+
+split_dataset_by_frames(
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\Roi-bg-cut-enhance-test-set",
+    4,
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\4 frames\Query-unregister-half",
+    r"C:\My_Laptop\Repo\Palm-Print-Identification-System\AI_server\mambavision\raw\realistic-test\bg-cut\4 frames\Register-unregister-half",
+)

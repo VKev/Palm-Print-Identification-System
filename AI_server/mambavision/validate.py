@@ -18,11 +18,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = mamba_vision_T(pretrained=True)
 # model =  mamba_vision_T(pretrained=False).to(device)
 # add_lora_to_model(model=model, rank=4, alpha=1, target_modules=["head", "levels.3.blocks.3.mlp.fc2", "levels.3.blocks.3.mlp.fc1", "levels.3.blocks.3.mixer.proj", "levels.3.blocks.3.mixer.qkv", "levels.3.blocks.2.mlp.fc2", "levels.3.blocks.2.mlp.fc1", "levels.3.blocks.2.mixer.proj", "levels.3.blocks.2.mixer.qkv","levels.3.blocks.1.mlp.fc2", "levels.3.blocks.1.mlp.fc1", "levels.3.blocks.1.mixer.in_proj", "levels.3.blocks.1.mixer.x_proj", "levels.3.blocks.1.mixer.dt_proj", "levels.3.blocks.1.mixer.out_proj", "levels.3.blocks.0.mlp.fc2", "levels.3.blocks.0.mlp.fc1", "levels.3.blocks.0.mixer.in_proj", "levels.3.blocks.0.mixer.x_proj", "levels.3.blocks.0.mixer.dt_proj", "levels.3.blocks.0.mixer.out_proj", "levels.2.blocks.7.mlp.fc2", "levels.2.blocks.7.mlp.fc1", "levels.2.blocks.7.mixer.proj", "levels.2.blocks.7.mixer.qkv"])
-# checkpoint = torch.load(r"checkpoints/checkpoint_epoch_57.pth")
-# model.load_state_dict(torch.load(r"checkpoints/checkpoint_epoch_65.pth"))
+# checkpoint = torch.load(r"checkpoints/checkpoint_epoch_80_keep.pth")
+# model.load_state_dict(torch.load(r"checkpoints/checkpoint_epoch_14.pth"))
 # model.head = CustomHead(in_channels=640)
-# checkpoint = torch.load(r"checkpoints/checkpoint_epoch_21.pth")
-# model.load_state_dict(checkpoint['model_state_dict'])
+checkpoint = torch.load(r"checkpoints/checkpoint_epoch_14.pth")
+model.load_state_dict(checkpoint['model_state_dict'])
 model.to(device)
 model.eval()  # Set the model to evaluation mode
 # Image preprocessing
@@ -48,7 +48,7 @@ class ImageDataset(Dataset):
         image_tensor = self.transform(image)
         return image_tensor
 
-def run_inference(image_paths, batch_size=64):
+def run_inference(image_paths, batch_size=16):
     dataset = ImageDataset(image_paths, preprocess)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
     all_outputs = []
@@ -234,7 +234,7 @@ def run_inference_and_compute_metrics(image_paths, strange_paths,
     results = {
         'voting_score': voting_score / n,
         'acc': acc * 100 / n,
-        'identity_acc': identity_acc * 100 / acc,
+        'identity_acc': (identity_acc * 100 / acc) if acc != 0 else 0,
         'frr': frr * 100 / n,
         'far': far * 100 / n,
         'avg_mean': avg_mean,
@@ -268,8 +268,8 @@ def print_results_unregister(results):
 
 
 metric_threshold = 0.698555148144563
-metric_threshold = 0.7396525979042053
-
+# metric_threshold = 0.7396525979042053
+metric_threshold = 0.8364
 
 #TRAIN SET
 image_paths = get_image_paths(r"raw/Register-register-half")
