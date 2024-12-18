@@ -5,7 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 import tienthuan.model.PalmPrintImage;
 import tienthuan.model.Student;
 import tienthuan.repository.PalmPrintImageRepository;
-import tienthuan.service.impl.UploadFileCloudService;
+import tienthuan.service.impl.CloudinaryService;
 import tienthuan.util.ImageUtil;
 import java.io.File;
 import java.nio.file.Files;
@@ -15,20 +15,20 @@ import java.util.List;
 @Slf4j
 public class CloudUploader extends Thread {
 
-    private final UploadFileCloudService uploadFileCloudService;
+    private final CloudinaryService cloudinaryService;
     private final PalmPrintImageRepository palmPrintImageRepository;
     private final MultipartFile[] multipartFiles;
     private final List<File> files;
     private final Student student;
 
     public CloudUploader(
-            UploadFileCloudService uploadFileCloudService,
+            CloudinaryService cloudinaryService,
             PalmPrintImageRepository palmPrintImageRepository,
             MultipartFile[] multipartFiles,
             List<File> files,
             Student student
     ) {
-        this.uploadFileCloudService = uploadFileCloudService;
+        this.cloudinaryService = cloudinaryService;
         this.palmPrintImageRepository = palmPrintImageRepository;
         this.multipartFiles = multipartFiles;
         this.files = files;
@@ -53,7 +53,7 @@ public class CloudUploader extends Thread {
     private void savePalmPrintImages(Student student, MultipartFile file) {
         try {
             byte[] compressedImage = ImageUtil.compressImage(file.getBytes());
-            String fileUrlCloud = uploadFileCloudService.uploadFile(file);
+            String fileUrlCloud = cloudinaryService.uploadFile(file);
             PalmPrintImage palmPrintImage = PalmPrintImage.builder()
                     .student(student)
                     .imagePath(fileUrlCloud)
@@ -69,7 +69,7 @@ public class CloudUploader extends Thread {
     private void savePalmPrintImages(Student student, File file) {
         try {
             byte[] compressedImage = ImageUtil.compressImage(Files.readAllBytes(file.toPath()));
-            String fileUrlCloud = uploadFileCloudService.uploadFile(file);
+            String fileUrlCloud = cloudinaryService.uploadFile(file);
             log.info(fileUrlCloud);
             PalmPrintImage palmPrintImage = PalmPrintImage.builder()
                     .student(student)

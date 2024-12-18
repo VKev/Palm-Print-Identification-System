@@ -18,4 +18,6 @@ public interface IAdminService {
 
     ResponseEntity<?> createStudent(StudentCreationRequest studentCreationRequest);
 
+    ResponseEntity<?> deleteStudent(String studentCode);
+
 }

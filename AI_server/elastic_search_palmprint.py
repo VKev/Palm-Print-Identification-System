@@ -1,12 +1,19 @@
 from elastic_search_util import *
 
-es = Elasticsearch(
-        "https://es01:9200",
-        basic_auth=("elastic", "1Q2uCUMactIRZdk_uE1m"),
-        verify_certs=False,
-        ssl_assert_hostname=False,
-        ssl_show_warn=False,
-    )
+
+es = None  # Global variable for the Elasticsearch client
+
+def get_elasticsearch_client():
+    global es
+    if es is None:  # Initialize the client only once per process
+        es = Elasticsearch(
+            "https://es01:9200",
+            basic_auth=("elastic", "1Q2uCUMactIRZdk_uE1m"),
+            verify_certs=False,
+            ssl_assert_hostname=False,
+            ssl_show_warn=False,
+        )
+    return es
 
 def cosine_similarity_search(es, index_name, query_vector, top_k=10):
     search_query = {

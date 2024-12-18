@@ -1,6 +1,8 @@
-from flask import Flask, jsonify, request,make_response
+from quart import Quart, jsonify, request
+from quart_cors import cors
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import asyncio
 import os
 from torchvision import transforms
 from PIL import Image
@@ -20,7 +22,7 @@ load_dotenv()
 
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Quart(__name__)
 # connection_string = os.getenv("MONGO_CONNECTION_STRING")
 # MongoDB connection string
 # Replace this with your actual MongoDB connection string
@@ -31,6 +33,9 @@ app = Flask(__name__)
 #     print(db.list_collection_names())
 # else:
 #     raise Exception("MongoDB connection string not found in environment variables")
+app = cors(app, allow_origin="*")
+
+
 
 def encode_image_to_base64_opencv(img, format="PNG"):
     """
@@ -112,18 +117,18 @@ def decode_base64_images_to_grayscale(base64_images):
     return decoded_images
 import time
 @app.route("/ai/register/backgroundcut", methods=["POST"])
-def background_cutt_batch():
+async def background_cutt_batch():
     print("/ai/register/backgroundcut")
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
 
-    data = request.json
+    data = await request.get_json()
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
     # print(data)
-    images = decode_base64_images(base64_images)
-    background_cut_images = background_cut_batch(images, 0.6)
+    images = await asyncio.to_thread(decode_base64_images,base64_images)
+    background_cut_images = await asyncio.to_thread(background_cut_batch,images, 0.6)
     
     # roi_cut_image = roicut(background_cut_image)
 
@@ -133,7 +138,7 @@ def background_cutt_batch():
     torch.cuda.empty_cache()
 
     start_time = time.time()
-    result = encode_base64(background_cut_images)
+    result = await asyncio.to_thread(encode_base64,background_cut_images)
     end_time = time.time()
     inference_time = end_time - start_time
     print(f"Blackout took {inference_time:.4f} seconds")
@@ -141,17 +146,17 @@ def background_cutt_batch():
 
 
 @app.route("/ai/register/roicut", methods=["POST"])
-def roi_cut():
+async def roi_cut():
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
     print("/ai/register/roicut")
-    data = request.json
+    data = await request.get_json()
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
 
-    images = decode_base64_images_to_grayscale(base64_images)
-    roi_cut_images = roicut(images)
+    images = await asyncio.to_thread(decode_base64_images_to_grayscale,base64_images)
+    roi_cut_images = await asyncio.to_thread(roicut,images)
     
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
     final_image = preprocess.enhance_pilimages(darken_images, 1.5)
@@ -173,128 +178,134 @@ def calculate_pairwise_euclidean_distance(features):
     
     return distances
 @app.route("/ai/register/inference", methods=["POST"])
-def register():
+async def register():
     print("/ai/register/inference")
+    es_client = get_elasticsearch_client()
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
 
-    data = request.json
+    data = await request.get_json()
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
     student_id = data['id']
-    images = decode_base64_images_for_inference(base64_images)
+    images =await asyncio.to_thread(decode_base64_images_for_inference,base64_images)
     batch = torch.stack([transform(img) for img in images])
     with torch.no_grad():
-        result = inference(batch.to(torch.float32).to("cuda"))
+        result =await asyncio.to_thread(inference,batch.to(torch.float32).to("cuda"))
     # euclidean_distances = calculate_pairwise_euclidean_distance(result)
-    bulk_index_vectors(es,index_name='palm-print-index', student_id=student_id, feature_vectors= result.cpu().numpy().tolist())
+    await asyncio.to_thread(bulk_index_vectors,es_client,index_name='palm-print-index', student_id=student_id, feature_vectors= result.detach().cpu().numpy().tolist())
     torch.cuda.empty_cache()
-    return jsonify({"feature_vectors": result.cpu().numpy().tolist()}), 200
+    return jsonify({"feature_vectors": result.detach().cpu().numpy().tolist()}), 200
     # return jsonify({"feature_vectors": euclidean_distances.cpu().numpy().tolist()}), 200
 
 
 @app.route("/ai/vectorize", methods=["POST"])
-def vectorize():
+async def vectorize():
     start_time = time.time()
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
     print("/ai/vectorize")
-    data = request.json
+    print(f"Current Process ID: {os.getpid()}")
+    data = await request.get_json()
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
-    images = decode_base64_images(base64_images)
-    background_cut_images = background_cut_batch(images, 0.6)
+    images = await asyncio.to_thread(decode_base64_images,base64_images)
+    background_cut_images = await asyncio.to_thread(background_cut_batch,images, 0.6)
     background_cut_images = [img.convert('RGB') for img in background_cut_images]
-    roi_cut_images = roicut(background_cut_images)
+    roi_cut_images = await asyncio.to_thread(roicut,background_cut_images)
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
     final_images = preprocess.enhance_pilimages(darken_images, 1.5)
     final_images = [img.convert('RGB') for img in final_images]
     batch = torch.stack([transform(img) for img in final_images])
     with torch.no_grad():
-        result = inference(batch.to(torch.float32).to("cuda"))
+        result = await asyncio.to_thread(inference,batch.to(torch.float32).to("cuda"))
     end_time = time.time()
     print("Time ",end_time-start_time)
-    return jsonify({"feature_vector": result.cpu().numpy().tolist() })
+    return jsonify({"feature_vector": result.detach().cpu().numpy().tolist() })
 
 @app.route("/ai/recognize/cosine-only", methods=["POST"])
-def cosine_only_search():
-    
-    data = request.json
+async def cosine_only_search():
+    es_client = get_elasticsearch_client()
+    data = await request.get_json()
     if 'feature_vector' not in data:
         return jsonify({"error": "Feature vector not found in request"}), 400
     
     result = data['feature_vector']
 
-    top1 = bulk_cosine_similarity_search(es, "palm-print-index", result)
+    top1 = await asyncio.to_thread(bulk_cosine_similarity_search,es_client, "palm-print-index", result)
     
     return jsonify(verify_palm_print(top1))
 
 @app.route("/ai/recognize/cosine", methods=["POST"])
-def cosine_search():
+async def cosine_search():
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
     print("/ai/recognize/cosine")
-    data = request.json
+    es_client = get_elasticsearch_client()
+    data = await request.get_json()
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
-    images = decode_base64_images(base64_images)
-    background_cut_images = background_cut_batch(images, 0.6)
+    images = await asyncio.to_thread(decode_base64_images,base64_images)
+    background_cut_images = await asyncio.to_thread(background_cut_batch,images, 0.6)
     background_cut_images = [img.convert('RGB') for img in background_cut_images]
-    roi_cut_images = roicut(background_cut_images)
+    roi_cut_images = await asyncio.to_thread(roicut,background_cut_images)
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
     final_images = preprocess.enhance_pilimages(darken_images, 1.5)
     final_images = [img.convert('RGB') for img in final_images]
     batch = torch.stack([transform(img) for img in final_images])
     with torch.no_grad():
-        result = inference(batch.to(torch.float32).to("cuda"))
-    top1 = bulk_cosine_similarity_search(es, "palm-print-index", result.cpu().numpy().tolist())
+        result = await asyncio.to_thread(inference,batch.to(torch.float32).to("cuda"))
+    top1 = await asyncio.to_thread(bulk_cosine_similarity_search,es_client, "palm-print-index", result.detach().cpu().numpy().tolist())
     
     return jsonify(verify_palm_print(top1))
 
 
 @app.route("/ai/recognize/euclidean", methods=["POST"])
-def euclidean_search():
+async def euclidean_search():
     current_directory = os.path.dirname(os.path.abspath(__file__)) 
     save_path = os.path.join(current_directory, 'processed_image.png')
     print("/ai/recognize/euclidean")
-    data = request.json
+    es_client = get_elasticsearch_client()
+    data = await request.get_json()
     if 'images' not in data:
         return jsonify({"error": "Images not found in request"}), 400
     base64_images = data['images']
-    images = decode_base64_images(base64_images)
-    background_cut_images = background_cut_batch(images, 0.6)
+    images = await asyncio.to_thread(decode_base64_images,base64_images)
+    background_cut_images = await asyncio.to_thread(background_cut_batch,images, 0.6)
     background_cut_images = [img.convert('RGB') for img in background_cut_images]
-    roi_cut_images = roicut(background_cut_images)
+    roi_cut_images = await asyncio.to_thread(roicut,background_cut_images)
     darken_images = preprocess.darken_pilimages(roi_cut_images,0.8)
     final_images = preprocess.enhance_pilimages(darken_images, 1.5)
     final_images = [img.convert('RGB') for img in final_images]
     batch = torch.stack([transform(img) for img in final_images])
     with torch.no_grad():
-        result = inference(batch.to(torch.float32).to("cuda"))
-    top1 = bulk_euclidean_similarity_search(es, "palm-print-index", result.cpu().numpy().tolist())
-    
+        result = await asyncio.to_thread(inference,batch.to(torch.float32).to("cuda"))
+    top1 = await asyncio.to_thread(bulk_euclidean_similarity_search,es_client, "palm-print-index", result.detach().cpu().numpy().tolist())
+    torch.cuda.empty_cache()
     return jsonify(verify_palm_print(top1))
 
 @app.route("/ai/database/delete-all", methods=["GET"])
-def delete_all():
-    delete_all_documents_in_index(es, "palm-print-index")
+async def delete_all():
+    es_client = get_elasticsearch_client()
+    await asyncio.to_thread(delete_all_documents_in_index,es_client, "palm-print-index")
     return jsonify({'message': 'delete success'})
 
 @app.route("/ai/database/list-all", methods=["GET"])
-def list_all():
-    result = list_documents_in_index(es, "palm-print-index",debug=False)
+async def list_all():
+    es_client = get_elasticsearch_client()
+    result =  await asyncio.to_thread(list_documents_in_index, es_client, "palm-print-index", 100, False)
     return jsonify(result)
 
 
 @app.route("/hello-world", methods=["GET"])
-def hello_world():
+async def hello_world():
     return jsonify("hello world")
 
 if __name__ == "__main__":
     create_palm_print_index()
     # delete_all_documents_in_index(es, "palm-print-index")
     # list_documents_in_index(es , "palm-print-index")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True)

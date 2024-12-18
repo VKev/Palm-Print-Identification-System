@@ -37,4 +37,9 @@ public class AdminController {
     public ResponseEntity<?> createStudent(@RequestBody StudentCreationRequest studentCreationRequest) {
         return adminService.createStudent(studentCreationRequest);
     }
+
+    @DeleteMapping("/student-data/delete-student/{studentCode}")
+    public ResponseEntity<?> deleteStudent(@PathVariable("studentCode") String studentCode) {
+        return adminService.deleteStudent(studentCode);
+    }
 }

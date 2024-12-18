@@ -85,7 +85,7 @@ export default function HandRecognizer(cameraProps: Props) {
                 //     (image: string) => ({ file: null, base64: image, isSelected: false, type: FileType.BASE64 })
                 // ));
                 cameraProps.setRecognitionResult(response.data);
-                //toast.success(response.data.student_info.studentCode + " - "+ response.data.student_info.studentName);
+                /// toast.success(response.data.student_info.studentCode + " - "+ response.data.student_info.studentName);
             }
             else {
                 toast.error('Error uploading video');

@@ -9,6 +9,8 @@ import HttpStatus from "../../config/HttpStatus";
 import StudentCreationModal from "../single/StudentCreationModal";
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import StudentDataModal from "../single/StudentDataModal";
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import StudentDeletionModal from "../single/StudentDeletionModal";
 
 export default function StudentDataMagement() {
 
@@ -18,6 +20,18 @@ export default function StudentDataMagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isStudentDataModalOpen, setIsStudentDataModalOpen] = useState(false);
+  const [selectedStudentForDeletion, setSelectedStudentForDeletion] = useState<Student | null>(null);
+  const [isStudentDeletionModalOpen, setIsStudentDeletionModalOpen] = useState(false);
+
+  const handleOpenStudentDeletionModal = (student: Student) => {
+    setSelectedStudentForDeletion(student);
+    setIsStudentDeletionModalOpen(true);
+  }
+
+  const handleCloseStudentDeletionModal = () => {
+    setIsStudentDeletionModalOpen(false);
+    setSelectedStudentForDeletion(null);
+  }
 
   const handleOpenStudentDataModal = (student: Student) => {
     setSelectedStudent(student);
@@ -38,6 +52,13 @@ export default function StudentDataMagement() {
     }
     fetchData().catch(console.error);
   }, [])
+
+  const handleDeleteStudent = (deletedStudent: Student) => {
+    const updatedStudentData = studentData.filter(
+      (student) => student.id !== deletedStudent.id
+    );
+    setStudentData(updatedStudentData);
+  };
 
   const handleCreateStudent = (newStudent: Student) => {
     setStudentData((prevStudents) => [...prevStudents, newStudent]);
@@ -113,15 +134,24 @@ export default function StudentDataMagement() {
                     <td className="py-4 px-6 text-sm text-gray-500 text-center">{student.studentName}</td>
                     <td className={`py-4 px-6 text-sm text-center ${student.isRegistered ? 'text-green-500' : 'text-red-500'}`}>
                       {student.isRegistered ? "✅ Registered" : "❌ Not Registered"}
-                    </td>                  
+                    </td>
                     <td className="py-4 px-6 text-sm text-center">
-                      <button title="View palm print images" 
-                        className="text-sm text-white bg-gradient-to-r from-green-400 via-green-500 to-green-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-500 font-medium rounded-lg px-3 py-1.5 text-center me-2" 
+
+                      <button title="View palm print images"
+                        className="text-sm text-white bg-gradient-to-r from-green-400 via-green-500 to-green-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-500 font-medium rounded-lg px-3 py-1.5 text-center me-2"
                         onClick={() => handleOpenStudentDataModal(student)}
-                        
-                        >
+                      >
                         <span>
                           <SourceIcon fontSize="inherit" />
+                        </span>
+                      </button>
+
+                      <button title="View palm print images"
+                        className="text-sm text-white bg-gradient-to-r from-red-400 via-red-500 to-red-500 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-500 font-medium rounded-lg px-3 py-1.5 text-center me-2"
+                        onClick={() => {handleOpenStudentDeletionModal(student)}}
+                      >
+                        <span>
+                          <DeleteForeverIcon fontSize="inherit" />
                         </span>
                       </button>
                     </td>
@@ -132,12 +162,12 @@ export default function StudentDataMagement() {
           </table>
         </div>
         {selectedStudent && (
-        <StudentDataModal
-          open={isStudentDataModalOpen}
-          handleClose={handleCloseStudentDataModal}
-          student={selectedStudent}
-        />
-      )}
+          <StudentDataModal
+            open={isStudentDataModalOpen}
+            handleClose={handleCloseStudentDataModal}
+            student={selectedStudent}
+          />
+        )}
       </div>
 
       <div className="flex justify-center mt-4">
@@ -158,6 +188,11 @@ export default function StudentDataMagement() {
         </button>
       </div>
 
+      <StudentDeletionModal open={isStudentDeletionModalOpen} 
+              handleClose={handleCloseStudentDeletionModal} 
+              student={selectedStudentForDeletion} 
+              handleDeleteStudent={handleDeleteStudent}
+      />
       <StudentCreationModal open={isModalOpen} handleClose={handleClose} onStudentCreated={handleCreateStudent} />
     </div>
   );
