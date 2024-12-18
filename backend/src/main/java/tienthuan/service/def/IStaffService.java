@@ -16,7 +16,7 @@ public interface IStaffService {
 
     ResponseEntity<?> recognizePalmPrint(MultipartFile[] videoFile);
 
-    ResponseEntity<?> recognizePalmPrint(String uuid, FrameRecognitionRequest frameRecognitionRequest);
+    ResponseEntity<?> recognizePalmPrint(String uuid, String base64Image);
 
     ResponseEntity<?> registerInference(String studentCode, MultipartFile[] files);
 

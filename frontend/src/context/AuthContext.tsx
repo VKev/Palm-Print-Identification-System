@@ -31,6 +31,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isReady, setIsReady] = useState<boolean>(false);
 
+    // console.log("user: ", user);
+    
+
     useEffect(() => {
         //const user = localStorage.getItem(USER_KEY);
         const authTokensString = localStorage.getItem(AUTH_TOKENS_KEY);

@@ -33,11 +33,14 @@ export default function HandRecognizer(cameraProps: Props) {
     const [handDetected, setHandDetected] = useState<boolean>(false);
     const [handDetectionTime, setHandDetectionTime] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [recordedChunks, setRecordedChunks] = useState<BlobPart[]>([]);
+    const [isRecording, setIsRecording] = useState<boolean>(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const handposeModelRef = useRef<handpose.HandPose | null>(null);
     const [isHandlingVideo, setIsHandlingVideo] = useState<boolean>(false);
     const [videoUploadedResponse, setVideoUploadedResponse] = useState<VideoUploadedResponse | null>(null);
+    const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
 
 
     useEffect(() => {
@@ -125,6 +128,14 @@ export default function HandRecognizer(cameraProps: Props) {
         }
     }
 
+    // const clearRecording = () => {
+    //     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    //         mediaRecorder.stop();
+    //     }
+    //     setRecordedChunks([]);
+    //     setIsRecording(false);
+    // };
+
     const detectHand = useCallback(async () => {
         if (videoRef.current && handposeModelRef.current) {
             const predictions = await handposeModelRef.current.estimateHands(videoRef.current);
@@ -136,7 +147,13 @@ export default function HandRecognizer(cameraProps: Props) {
             }
             else { // reset
                 setHandDetectionTime(0);
-                setHandDetected(false)
+                setHandDetected(false);
+                //clearRecording();
+                if (mediaRecorder) {
+                    console.log("clearRecording");
+                    
+                    mediaRecorder.ondataavailable = null;
+                }
             }
 
             if (handDetectionTime >= 3000) { // 3s
@@ -172,6 +189,7 @@ export default function HandRecognizer(cameraProps: Props) {
             }
             const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
+            setMediaRecorder(mediaRecorder);
 
             const chunks: BlobPart[] | undefined = [];
             mediaRecorder.ondataavailable = (e) => chunks.push(e.data);

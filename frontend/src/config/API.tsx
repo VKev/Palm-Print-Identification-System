@@ -17,7 +17,8 @@ const API = {
         TEST: '/api/staff/test-ai',
         RECOGNIZE_PALM_PRINT_BY_VIDEO: '/api/staff/recognize-palm-print/',
         RECOGNIZE_PALM_PRINT_BY_IMAGE: '/api/staff/recognize-palm-print-image',
-        GET_HISTORY_LOGS_BY_STAFF: '/api/staff/history-logs/'
+        GET_HISTORY_LOGS_BY_STAFF: '/api/staff/history-logs/',
+        RECOGNIZE_BY_FRAMES: '/api/staff/recognize-palm-print-by-frames'
     },
 
     Admin: {

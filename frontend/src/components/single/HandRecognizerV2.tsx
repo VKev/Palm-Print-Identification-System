@@ -22,9 +22,18 @@ type Props = {
     userProfile?: UserProfile | null;
     setSelectedImages: (imagesFiles: ImageFile[]) => void;
     setRecognitionResult: (recognitionResult: RecognitionResult | null) => void;
-}
+    
+};
 
 const readyHandDectectionTime = 500; // ms
+const limitCapturedFrames = 35;
+const recognitionProcess = {
+    STARTED: "STARTED",
+    PENDING: "PENDING",
+    FINAL: "FINAL",
+    SUCCESS: "SUCCESS",
+    
+}
 
 const HandRecognizerV2 = (cameraProps: Props) => {
 
@@ -40,8 +49,13 @@ const HandRecognizerV2 = (cameraProps: Props) => {
     const [isHandlingVideo, setIsHandlingVideo] = useState<boolean>(false);
     const [initialDetectionTime, setInitialDetectionTime] = useState(0);
     const [showSteadyMessage, setShowSteadyMessage] = useState(false);
-    const [capturedFrames, setCapturedFrames] = useState<string[]>([]);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    const [currentUUID, setCurrentUUID] = useState<string>(uuidv4());
+    const [capturedFrames, setCapturedFrames] = useState<string[]>([]);
+    const [process, setProcess] = useState<string>(recognitionProcess.STARTED);
+    const [frameCount, setFrameCount] = useState(0);
+    const [isCameraPaused, setIsCameraPaused] = useState(false);
 
 
     useEffect(() => {
@@ -60,20 +74,6 @@ const HandRecognizerV2 = (cameraProps: Props) => {
         loadHandposeModel();
     }, []);
 
-    const sendFramesToServer = async (videoBlob: Blob, studentCode: string) => {
-        switch (cameraProps.cameraMode) {
-            case CameraMode.REGISTRATION:
-                // uploadVideoForRegistration(videoBlob, studentCode);
-                break;
-            case CameraMode.RECOGNITION:
-                // recognizePalmPrint(videoBlob);
-                break;
-            default:
-                toast.error('Invalid camera mode');
-                break;
-        }
-    };
-
 
     const captureFrame = useCallback(() => {
         if (!videoRef.current || !canvasRef.current) return;
@@ -89,13 +89,13 @@ const HandRecognizerV2 = (cameraProps: Props) => {
 
         const base64String = canvas.toDataURL('image/png');
         const formattedBase64 = base64String.replace(/^data:image\/(png|jpg|jpeg);base64,/, '');
-        console.log(formattedBase64);
-        
+        //console.log(formattedBase64);
+
         // Add to array if less than 30 frames
         setCapturedFrames(prev => {
-            if (prev.length >= 30) {
-                // Send to server here
-                console.log('Captured 30 frames:', prev);
+            if (prev.length >= limitCapturedFrames) {
+                // Send to server here with uuid
+                //console.log('Captured 30 frames:', prev);
                 return prev;
             }
             return [...prev, formattedBase64];
@@ -115,46 +115,56 @@ const HandRecognizerV2 = (cameraProps: Props) => {
                     if (prevTime < readyHandDectectionTime) { // 0.5 seconds
                         return prevTime + 100;
                     }
-                    captureFrame();
+                    const frame = captureFrame();
+                    if (frame && !isCameraPaused && frameCount < 30) {
+                        sendFrames(frame);
+                        setFrameCount(prev => prev + 1);
+                        
+                        if (frameCount === 29) {
+                            setIsCameraPaused(true);
+                        }
+                    }
                     setShowSteadyMessage(true);
                     setHandDetectionTime(prevTime => prevTime + 100);
                     return prevTime;
                 });
-            } 
+            }
             else {
-                // Clear frames if hand is no longer detected
                 setCapturedFrames([]);
                 setInitialDetectionTime(0);
                 setHandDetectionTime(0);
                 setShowSteadyMessage(false);
-                
-            }
-            
-            if (captureFrame.length >= 30) {
-                if (mediaRecorderRef.current) {
-                    mediaRecorderRef.current.stop();
-                    mediaRecorderRef.current.ondataavailable = (event) => {
-                        if (event.data.size > 0) {
-                            // Send frames to server
-                        }
-                    };
-                    setHandDetectionTime(0);
-                }
+                setCurrentUUID('');
             }
 
-            // if (handDetectionTime >= 3000) { // 3s
-            //     if (mediaRecorderRef.current) {
-            //         mediaRecorderRef.current.stop();
-            //         mediaRecorderRef.current.ondataavailable = (event) => {
-            //             if (event.data.size > 0) {
-            //                 sendVideoToServer(event.data, cameraProps.studentCode || '');
-            //             }
-            //         };
-            //         setHandDetectionTime(0);
-            //     }
-            // }
         }
-    }, [handDetectionTime, cameraProps.studentCode, captureFrame]);
+    }, [handDetectionTime, cameraProps.studentCode, captureFrame, isCameraPaused, frameCount]);
+
+    const sendFrames = async (frame: string) => {
+        console.log('Sending frame: '+ currentUUID);    
+        
+        try {
+            const response = await api.post(API.Staff.RECOGNIZE_BY_FRAMES, {
+                uuid: currentUUID,
+                base64Image: frame
+            });
+            if (response.status === HttpStatus.OK) {
+                console.log(response.data);
+                toast.success(response.data.accept ? "Recognition successful" : "Recognition failed");
+                setProcess(recognitionProcess.STARTED);
+                handleResponse(response);
+            }
+        }
+        catch (error: any) {
+            toast.error(error.response.data.message);
+        }
+    }
+
+    const handleResponse = (response) => {
+        // Handle your response data here
+        setIsCameraPaused(false);
+        setFrameCount(0);
+    }
 
     useEffect(() => {
         startRecording();

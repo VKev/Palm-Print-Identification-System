@@ -6,8 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import tienthuan.dto.request.CapturedFrameRequest;
 import tienthuan.dto.request.FrameRecognitionRequest;
 import tienthuan.service.def.IStaffService;
 
@@ -99,12 +101,12 @@ public class StaffController {
         return staffService.recognizePalmPrint(userId, videoFile);
     }
 
-    @PostMapping("/recognize-palm-print-by-frames/{uuid}")
+    @Async
+    @PostMapping("/recognize-palm-print-by-frames")
     public ResponseEntity<?> recognizePalmPrint(
-            @PathVariable("uuid") String uuid,
-            @RequestBody FrameRecognitionRequest frameRecognitionRequest
+            @RequestBody CapturedFrameRequest capturedFrameRequest
     ) {
-        return staffService.recognizePalmPrint(uuid, frameRecognitionRequest);
+        return staffService.recognizePalmPrint(capturedFrameRequest.getUuid(), capturedFrameRequest.getBase64Image());
     }
 
 
