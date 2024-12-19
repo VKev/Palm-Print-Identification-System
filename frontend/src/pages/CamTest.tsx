@@ -60,8 +60,8 @@ export default function CamTest() {
       videoRef.current.srcObject = stream;
       setIsCapturing(true);
 
-      // Capture every 100ms
-      intervalRef.current = setInterval(captureFrame, 100);
+      // Capture every 20ms
+      intervalRef.current = setInterval(captureFrame, 20);
     } catch (err) {
       console.error("Error accessing media devices.", err);
     }

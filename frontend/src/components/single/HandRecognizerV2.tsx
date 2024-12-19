@@ -7,11 +7,8 @@ import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import LoadEffect from './LoadEffect';
 import DeviceNameIdentifier from "./DeviceNameIdentifier";
 import useAxios from "../../utils/useAxios";
-import API from "../../config/API";
-import { CameraMode, RecognitionResult, VideoUploadedResponse } from "../../models/PalmPrint";
-import HttpStatus from "../../config/HttpStatus";
-import { v4 as uuidv4 } from 'uuid';
-import { FileType, ImageFile } from "../../models/Student";
+import { RecognitionResult } from "../../models/PalmPrint";
+import { ImageFile } from "../../models/Student";
 import { UserProfile } from "../../models/User";
 
 type Props = {
@@ -26,14 +23,6 @@ type Props = {
 };
 
 const readyHandDectectionTime = 500; // ms
-const limitCapturedFrames = 35;
-const recognitionProcess = {
-    STARTED: "STARTED",
-    PENDING: "PENDING",
-    FINAL: "FINAL",
-    SUCCESS: "SUCCESS",
-    
-}
 
 const HandRecognizerV2 = (cameraProps: Props) => {
 
@@ -51,6 +40,7 @@ const HandRecognizerV2 = (cameraProps: Props) => {
     const [showSteadyMessage, setShowSteadyMessage] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const vectorList = useRef([]);
+    // const [isCameraPaused, setIsCameraPaused] = useState<boolean>(false);
 
     useEffect(() => {
         async function initTF() {
@@ -83,16 +73,6 @@ const HandRecognizerV2 = (cameraProps: Props) => {
 
         const base64String = canvas.toDataURL('image/png');
         const formattedBase64 = base64String.replace(/^data:image\/(png|jpg|jpeg);base64,/, '');
-        
-        // Add to array if less than 30 frames
-        // setCapturedFrames(prev => {
-        //     if (prev.length >= 30) {
-        //         // Send to server here
-        //         // console.log('Captured 30 frames:', prev);
-        //         return prev;
-        //     }
-        //     return [...prev, formattedBase64];
-        // });
 
         return formattedBase64;
     }, []);
@@ -133,9 +113,8 @@ const HandRecognizerV2 = (cameraProps: Props) => {
             }
           }
     
-          
-    
-        } catch (err) {
+        } 
+        catch (err) {
           console.error("Failed to send frame to API:", err);
         }
       };
@@ -161,41 +140,41 @@ const HandRecognizerV2 = (cameraProps: Props) => {
             else {
                 // Clear frames if hand is no longer detected
                 vectorList.current = []
-                setCapturedFrames([]);
+                //setCapturedFrames([]);
                 setInitialDetectionTime(0);
                 setHandDetectionTime(0);
                 setShowSteadyMessage(false);
-                setCurrentUUID('');
+                //setCurrentUUID('');
             }
 
         }
-    }, [handDetectionTime, cameraProps.studentCode, captureFrame, isCameraPaused, frameCount]);
+    }, [handDetectionTime, cameraProps.studentCode, captureFrame]);
 
-    const sendFrames = async (frame: string) => {
-        console.log('Sending frame: '+ currentUUID);    
+    // const sendFrames = async (frame: string) => {
+    //     console.log('Sending frame: '+ currentUUID);    
         
-        try {
-            const response = await api.post(API.Staff.RECOGNIZE_BY_FRAMES, {
-                uuid: currentUUID,
-                base64Image: frame
-            });
-            if (response.status === HttpStatus.OK) {
-                console.log(response.data);
-                toast.success(response.data.accept ? "Recognition successful" : "Recognition failed");
-                setProcess(recognitionProcess.STARTED);
-                handleResponse(response);
-            }
-        }
-        catch (error: any) {
-            toast.error(error.response.data.message);
-        }
-    }
+    //     try {
+    //         const response = await api.post(API.Staff.RECOGNIZE_BY_FRAMES, {
+    //             uuid: currentUUID,
+    //             base64Image: frame
+    //         });
+    //         if (response.status === HttpStatus.OK) {
+    //             console.log(response.data);
+    //             toast.success(response.data.accept ? "Recognition successful" : "Recognition failed");
+    //             setProcess(recognitionProcess.STARTED);
+    //             handleResponse(response);
+    //         }
+    //     }
+    //     catch (error: any) {
+    //         toast.error(error.response.data.message);
+    //     }
+    // }
 
-    const handleResponse = (response) => {
-        // Handle your response data here
-        setIsCameraPaused(false);
-        setFrameCount(0);
-    }
+    // const handleResponse = (response) => {
+    //     // Handle your response data here
+    //     setIsCameraPaused(false);
+    //     setFrameCount(0);
+    // }
 
     useEffect(() => {
         startRecording();
@@ -203,6 +182,7 @@ const HandRecognizerV2 = (cameraProps: Props) => {
 
     useEffect(() => {
         const detectionInterval: NodeJS.Timeout = setInterval(detectHand, 100);
+        console.log("Interval started");
         return () => {
             if (detectionInterval) clearInterval(detectionInterval);
         }
@@ -249,6 +229,7 @@ const HandRecognizerV2 = (cameraProps: Props) => {
             }
         };
     }, []);
+
 
     return (
         <div className="container mx-auto px-4 max-w-4xl">
@@ -338,14 +319,14 @@ const HandRecognizerV2 = (cameraProps: Props) => {
                     style={{ display: 'none' }}
                 />
                 {/* Debug preview - remove in production */}
-                <div style={{ marginTop: '10px' }}>
+                {/* <div style={{ marginTop: '10px' }}>
                     <p>Debug Preview:</p>
                     <img
                         src={`data:image/png;base64,${capturedFrames[capturedFrames.length - 1] || ''}`}
                         style={{ width: '200px', display: capturedFrames.length ? 'block' : 'none' }}
                         alt="Latest capture"
                     />
-                </div>
+                </div> */}
             </div>
         </div>
     );
