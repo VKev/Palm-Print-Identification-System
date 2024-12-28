@@ -30,12 +30,12 @@ from utils import (
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Training parameters for the model.')
-    parser.add_argument('--train_image_folder', type=str, default=r"raw/train", 
+    parser.add_argument('--train_image_folder', type=str, default=r"../../../Dataset/Palm-Print/TrainAndTest/train", 
                        help='Path to the training images folder')
     parser.add_argument('--train_aug_image_folder', type=str, default=r"raw/train-aug", 
                        help='Path to the training images folder')
     parser.add_argument('--test_image_folder', type=str, 
-                       default=r"raw/dataset-test/Sapienza University Mobile Palmprint Database(SMPD)/Sapienza-University-test-roi-by-our", 
+                       default=r"../../../Dataset/Palm-Print/TrainAndTest/test", 
                        help='Path to the test images folder')
     parser.add_argument('--batch_size', type=int, default=24, help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=10000, help='Number of epochs to train')
@@ -120,7 +120,12 @@ def initialize_model(device: torch.device, args: argparse.Namespace,checkpoint_p
         for param in model.levels[3].parameters():
             param.requires_grad = True
 
-        print(model.levels[3])
+        for param in model.levels[2].parameters():
+            param.requires_grad = True
+        
+        for param in model.levels[1].parameters():
+            param.requires_grad = True
+
         model.to(device)
         
         optimizer = optim.AdamW(
@@ -151,6 +156,14 @@ def initialize_model(device: torch.device, args: argparse.Namespace,checkpoint_p
         for name, param in model.named_parameters():
             if "lora_" in name:
                 param.requires_grad = True
+        for param in model.levels[3].parameters():
+            param.requires_grad = True
+
+        for param in model.levels[2].parameters():
+            param.requires_grad = True
+        
+        for param in model.levels[1].parameters():
+            param.requires_grad = True
         # for param in model.head.parameters():
         #     param.requires_grad = True        
         model.to(device)
@@ -337,14 +350,14 @@ def setup_dataloaders(args: argparse.Namespace) -> Tuple[DataLoader, DataLoader,
 def update_test_settings(args: argparse.Namespace) -> argparse.Namespace:
     """Update settings for test mode."""
     if args.test:
-        args.val_batch_size = 16
-        args.test_batch = 16
-        args.batch_size = 16
-        args.n_negatives = 12
-        args.num_label_negative = 8
+        args.val_batch_size = 4
+        args.test_batch = 4
+        args.batch_size = 2
+        args.n_negatives = 1
+        args.num_label_negative = 1
         args.num_workers = 4
-        args.test_negatives = 12
-        args.test_negatives_class = 8
+        args.test_negatives = 1
+        args.test_negatives_class = 1
     return args
 
 def main():
