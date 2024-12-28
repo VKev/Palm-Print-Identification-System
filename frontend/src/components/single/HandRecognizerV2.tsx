@@ -100,16 +100,25 @@ const HandRecognizerV2 = (cameraProps: Props) => {
             };
             vectorList.current = []; // Clear the list
             console.log(requestToCosine)
-            const cosineResponse = await fetch("http://localhost:5000/ai/recognize/cosine-only", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(requestToCosine),
-            });
-            if(cosineResponse.ok){
-                const responseData = await cosineResponse.json(); // Parse JSON response
-                console.log("Response Data:", responseData);
+            setIsHandlingVideo(true);
+    
+            try {
+                const cosineResponse = await fetch("http://localhost:5000/ai/recognize/cosine-only", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestToCosine),
+                });
+        
+                if (cosineResponse.ok) {
+                    const responseData = await cosineResponse.json();
+                    console.log("Response Data:", responseData);
+                }
+            } catch (error) {
+                console.error("Error during API call:", error);
+            } finally {
+                setIsHandlingVideo(false); // Reset state after API call completes
             }
           }
     
@@ -131,11 +140,16 @@ const HandRecognizerV2 = (cameraProps: Props) => {
                         return prevTime + 100;
                     }
                     setShowSteadyMessage(true);
-                    setHandDetectionTime(prevTime => prevTime + 100);
+                    setHandDetectionTime(prevTime => prevTime + 50);
                     return prevTime;
                 });
-                var framebase64 = captureFrame();
-                var result = await sendFrameToAPI(framebase64);
+                if (handDetectionTime > 0) {
+                    var framebase64 = captureFrame();
+                    //var result = await sendFrameToAPI(framebase64);
+                    console.log(framebase64?.substring(0,10));
+                    
+                }
+                
             } 
             else {
                 // Clear frames if hand is no longer detected
@@ -146,9 +160,14 @@ const HandRecognizerV2 = (cameraProps: Props) => {
                 setShowSteadyMessage(false);
                 //setCurrentUUID('');
             }
-
         }
     }, [handDetectionTime, cameraProps.studentCode, captureFrame]);
+
+    useEffect(() => {
+        const intervalId = setInterval(detectHand, 20); // Call detectHand every 20ms
+
+        return () => clearInterval(intervalId); // Clear interval on component unmount
+    }, [detectHand]);
 
     // const sendFrames = async (frame: string) => {
     //     console.log('Sending frame: '+ currentUUID);    
@@ -179,14 +198,6 @@ const HandRecognizerV2 = (cameraProps: Props) => {
     useEffect(() => {
         startRecording();
     }, []);
-
-    useEffect(() => {
-        const detectionInterval: NodeJS.Timeout = setInterval(detectHand, 100);
-        console.log("Interval started");
-        return () => {
-            if (detectionInterval) clearInterval(detectionInterval);
-        }
-    }, [detectHand])
 
     const startRecording = useCallback(async () => {
         try {
