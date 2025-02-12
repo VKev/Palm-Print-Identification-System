@@ -86,50 +86,42 @@ In the second step of the Register Palm Print process, illustrated in Figure 14,
   
 ![Alt text](Images/register_2.png)
 *Figure 14: Activating the camera to capture the palm image.*    
-
-In the second step, the system activates the camera to capture the user's palm image. The interface displays a status of "Waiting for hand detection" and a notification appears once a hand is detected. The system records the palm image, ensuring a clear and valid capture.
-
+  
 ![Alt text](Images/register_3.png)
 *Figure 15: Sending the video to the server after hand detection.*
-
-
+  
+In step 4 of the Register Palm Print process, illustrated in Figure 16, the system extracts approximately 30 frames from the video recorded in the previous step. These frames represent individual still images of the user's palm, ensuring a variety of angles and clarity for accurate palm print data registration. The extracted frames are displayed in a grid format, allowing users to preview the images, the staff can choose images which are substandard such as blurry, poor quality photos, eliminate them before sending them to server to handle the next step. This step is critical for choosing the most suitable frames to ensure the quality and reliability of the palm print data being registered.
+  
 ![Alt text](Images/register_4.1.png)
 *Figure 16: Extracting frames from the recorded video.*  
 
-In step 4, the system extracts approximately 30 frames from the recorded video. These frames are displayed in a grid format for preview, allowing the staff to eliminate substandard images before sending them to the server.
+In step 5 of the Register Palm Print process, as shown in Figure 17, the system processes the previously extracted frames by removing the background, isolating the palm area. This step enhances the clarity and focus of the palm images by eliminating any unnecessary elements from the frame, leaving only the hand against a clean, black background. The processed images are displayed in a grid format for the user to review. As in the previous step, the staff can choose image to eliminate these poor quality background cut photos ensure accurate and reliable palm print data by emphasizing only the relevant features of the hand.
 
 ![Alt text](Images/register_5.png)
 *Figure 17: Processing frames by removing the background.*  
 
-In step 5, the system processes the frames by removing the background, isolating the palm area. The processed images are displayed for review, and the staff can eliminate poor quality photos.
-
+In step 6 of the Register Palm Print process, as shown in Figure 18, the system performs Region of Interest (ROI) cutting to isolate the detailed palm print patterns from the selected images. This step extracts only the core area of the palm print, ensuring the removal of any irrelevant portions of the hand or background. The processed images display the intricate palm lines and ridges, making them suitable for biometric analysis. After confirm to next step, if no any error or exception from server, the screen will display "Register palm print successfully" like Figure 19.
+  
 ![Alt text](Images/register_6.png)
 *Figure 18: Performing Region of Interest (ROI) cutting.*
-
-
+  
 ![Alt text](Images/register_7.png)
-*Figure 19: Successful palm print registration.*  
+*Figure 19: Successfull palm print registration.*  
+  
 
-In step 6, the system performs Region of Interest (ROI) cutting to isolate detailed palm print patterns. The processed images display intricate palm lines and ridges, suitable for biometric analysis. If no errors occur, the screen will display "Register palm print successfully."
-
-
+    
 ### Palm Print Recognition
 
-![Alt text](Images/recognition_1.png)
-*Figure 20: Activating the camera and detecting the presence of a hand.*
-
+In the first step of the Recognize Palm Print process, illustrated in Figure 20, the system begins by activating the camera and detecting the presence of a hand. As shown in the image, the system is currently recording and has successfully detected the user's hand. The detected hand is displayed in real-time to ensure proper positioning for palm print recognition. This step is the first for capturing a clear palm image, which is then analyzed to match against stored records in the system. Users must ensure proper hand alignment and clarity to achieve accurate recognition results. After detecting the hand about 3 seconds, all frames are captured will sent to server to recognize identity.
+  
 ![Alt text](Images/recognition_2.png)
-*Figure 21: Capturing frames and sending them to the server for identity recognition.*
-
-![Alt text](Images/recognition_3.png)
-*Figure 22: Displaying the recognition results with key metrics.* 
-
-In the first step, the system activates the camera and detects the presence of a hand. The detected hand is displayed in real-time to ensure proper positioning for palm print recognition. Users must ensure proper hand alignment and clarity for accurate recognition results. After detecting the hand for about 3 seconds, all captured frames are sent to the server for identity recognition.
-
+*Figure 20: Capturing frames and sending them to the server for identity recognition.*
+  
+In the final step of the Recognize Palm Print process, as shown in Figure 21, the system successfully completes the recognition and displays the results. The Recognition Result panel on the right confirms that the recognition was successful with the ``Accept'' status marked as ``True''. Key metrics such as the Average Occurrence Score (0.93) and Average Similarity Score (0.93) indicate a high match accuracy. The Most Common ID identified is SE182363, and the Occurrence Count is 28, suggesting consistent matches with the stored data. Additionally, the recognition score achieved is 0.93. The recognized user is displayed as Nguyen Tien Thuan, confirming that the palm print corresponds to this individual. This step validates the successful recognition and identification of the user based on the palm print data.
+  
 ![Alt text](Images/recognition_4.png)
-*Figure 23: Confirming the recognized user based on the palm print data.* 
+*Figure 21: Confirming the recognized user based on the palm print data.* 
 
-In the final step, the system completes the recognition and displays the results. The Recognition Result panel confirms the recognition was successful with an "Accept" status marked as "True". Key metrics such as the Average Occurrence Score (0.93) and Average Similarity Score (0.93) indicate high match accuracy. The recognized user is displayed as Nguyen Tien Thuan, confirming the palm print corresponds to this individual.
 
 
 <!-- ----------------------------------------------------- -->
