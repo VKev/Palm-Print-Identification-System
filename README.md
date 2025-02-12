@@ -59,10 +59,11 @@ server sides. The process follows a numbered sequence (1-5):
 ## Application User Interface and Features
 
 ### Authentication and Authorization
-
+The Figure 10 illustrates the login screen that serves to authenticate users and assign permissions when logging in to use the system. Staff accounts will be strictly managed by the admin. When logging in, an account with the ADMIN role will be redirected to the main screen of the admin, illustrated in Figure 11. In addition, an account with the STAFF role will be redirected to the main screen of the staff, as shown Figure 12.
+  
 ![Alt text](Images/login_screen.png)
 *Figure 10: The login screen.*
-
+  
 <div style="display: flex; justify-content: center;">
   <div>
     <img src="Images/dashboard_admin.png" alt="Admin Dashboard" style="width: 95%;">
@@ -74,16 +75,15 @@ server sides. The process follows a numbered sequence (1-5):
   </div>
 </div>
 
-The login screen (Figure 10) authenticates users and assigns permissions. Admin accounts are managed by the admin. ADMIN role accounts are redirected to the admin main screen (Figure 11), while STAFF role accounts are redirected to the staff main screen (Figure 12).
-
 
 ### Palm Print Registration
-
+The Figure 13 illustrates the first step of registration, the staff must supply a student code before registering palm print. Staffs begin by entering a student code in the provided text box, as shown with the example SE182363. After entering the code, they click the "Check" button, which verifies the validity of the student in the system. A green notification, such as "Student is valid!" in this instance, confirms successful validation. This step ensures that only authorized students can proceed to the next stage of palm print registration, maintaining the integrity of the system.
+  
 ![Alt text](Images/register_1.png)
 *Figure 13: Entering the student code for validation.*  
-
-In the first step, the staff must supply a student code before registering a palm print. They enter the code and click the "Check" button to verify the student's validity. A green notification confirms successful validation.
-
+  
+In the second step of the Register Palm Print process, illustrated in Figure 14, the system activates the camera to capture the user's palm image for registration. Initially, the interface displays a status of "Waiting for hand detection" alongside a spinning loader, indicating that the system is scanning for a hand to appear in the camera's view. Once a hand is detected, a notification appears, such as "Hand detected for 1.6 seconds," confirming the detection process. The system simultaneously records the palm image, as indicated by the red "Recording..." status at the top. This step ensures the successful capture of a clear and valid palm image using the connected camera, as seen in the sample image. The process is essential for accurately registering the palm print data into the system. After detecting the hand about 3 seconds, the video will be sent to server to process and go to the next step, as shown in Figure 15.
+  
 ![Alt text](Images/register_2.png)
 *Figure 14: Activating the camera to capture the palm image.*    
 
